@@ -5,10 +5,6 @@ import Navigation from './components/common/Navigation';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import ForgotPassword from './components/auth/ForgotPassword';
-import VerifyEmail from './components/auth/VerifyEmail';
-import VerifyOTP from './components/auth/VerifyOTP';
-import ResetPassword from './components/auth/ResetPassword';
 import Dashboard from './components/dashboard/Dashboard';
 import SymptomChecker from './components/symptomChecker/SymptomChecker';
 import DoctorConsultation from './components/doctorConsultation/DoctorConsultation';
@@ -16,6 +12,7 @@ import EmergencyContacts from './components/emergencyContacts/EmergencyContacts'
 import HealthRecommendations from './components/healthRecommendations/HealthRecommendations';
 import ReportAnalyzer from './components/reportAnalyzer/ReportAnalyzer';
 import Profile from './components/profile/Profile';
+
 import './styles/styles.css';
 
 const App = () => {
@@ -25,15 +22,8 @@ const App = () => {
                 <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
                     <Navigation />
                     <Routes>
-                        {/* Auth Routes */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/verify-email" element={<VerifyEmail />} />
-                        <Route path="/verify-otp" element={<VerifyOTP />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
-                        
-                        {/* Protected Routes */}
                         <Route path="/dashboard" element={
                             <ProtectedRoute>
                                 <Dashboard />
@@ -69,8 +59,6 @@ const App = () => {
                                 <Profile />
                             </ProtectedRoute>
                         } />
-                        
-                        {/* Default Route */}
                         <Route path="/" element={<Login />} />
                     </Routes>
                 </div>
