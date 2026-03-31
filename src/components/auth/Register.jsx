@@ -1,139 +1,144 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 const Register = () => {
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: ''
-    });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [message, setMessage] = useState('');
-    const { register } = useAuth();
-    const navigate = useNavigate();
+  const { register } = useAuth();
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        setMessage('');
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
 
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
-            setLoading(false);
-            return;
-        }
+  const [status, setStatus] = useState({
+    loading: false,
+    error: "",
+    message: "",
+  });
 
-        try {
-            console.log('Submitting registration with:', formData); // Debug log
-            
-            const result = await register({
-                name: formData.name,
-                email: formData.email,
-                password: formData.password
-            });
-            
-            console.log('Registration result:', result); // Debug log
-            
-            if (result.success) {
-                setMessage('Registration successful! Please verify your email with the OTP sent.');
-                setTimeout(() => {
-                    navigate('/verify-email', { 
-                        state: { 
-                            email: formData.email,
-                            isRegistration: true 
-                        } 
-                    });
-                }, 2000);
-            } else {
-                setError(result.message || 'Registration failed');
-            }
-        } catch (error) {
-            console.error('Registration error:', error); // Debug log
-            setError('Registration failed. Please try again.');
-        }
-        setLoading(false);
-    };
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus({ loading: true, error: "", message: "" });
 
-    return (
-        <div className="container" style={{ padding: '4rem 0' }}>
-            <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-                <div className="card fade-in">
-                    <div className="card-header">
-                        <h2 className="card-title">Create Account</h2>
-                        <p style={{ color: 'var(--gray)', fontSize: '0.875rem' }}>
-                            Join MediPredict for AI-powered health insights
-                        </p>
-                    </div>
-                    {message && <div className="alert alert-success">{message}</div>}
-                    {error && <div className="alert alert-error">{error}</div>}
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label className="form-label">Full Name</label>
-                            <input
-                                type="text"
-                                name="name"
-                                className="form-input"
-                                value={formData.name}
-                                onChange={handleChange}
-                                placeholder="Enter your full name"
-                                required
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Email</label>
-                            <input
-                                type="email"
-                                name="email"
-                                className="form-input"
-                                value={formData.email}
-                                onChange={handleChange}
-                                placeholder="Enter your email"
-                                required
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Password</label>
-                            <input
-                                type="password"
-                                name="password"
-                                className="form-input"
-                                value={formData.password}
-                                onChange={handleChange}
-                                placeholder="Create a strong password"
-                                required
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Confirm Password</label>
-                            <input
-                                type="password"
-                                name="confirmPassword"
-                                className="form-input"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                placeholder="Confirm your password"
-                                required
-                            />
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-                            {loading ? 'Creating Account...' : 'Create Account'}
-                        </button>
-                    </form>
-                    <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                        <p>Already have an account? <Link to="/login" style={{ color: 'var(--primary)' }}>Login</Link></p>
-                    </div>
-                </div>
-            </div>
+    if (formData.password !== formData.confirmPassword) {
+      return setStatus({
+        loading: false,
+        error: "Passwords do not match",
+        message: "",
+      });
+    }
+
+    try {
+      const result = await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (result.success) {
+        setStatus({
+          loading: false,
+          error: "",
+          message: "Registration successful! Check your email for OTP.",
+        });
+
+        setTimeout(() => {
+          navigate("/verify-otp", {
+            state: {
+              email: formData.email,
+              isRegistration: true,
+              type: "email_verification",
+            },
+          });
+        }, 1000);
+      } else {
+        setStatus({
+          loading: false,
+          error: result.message || "Registration failed",
+          message: "",
+        });
+      }
+    } catch {
+      setStatus({
+        loading: false,
+        error: "Something went wrong. Try again.",
+        message: "",
+      });
+    }
+  };
+
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-100 px-4">
+      <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8 space-y-6">
+
+        <div className="text-center space-y-1">
+          <h2 className="text-3xl font-semibold">Sign Up</h2>
+          <p className="text-gray-500 text-sm">Create your MediPredict account</p>
         </div>
-    );
+
+        {status.message && (
+          <div className="bg-green-100 text-green-700 text-sm p-3 rounded-md">
+            {status.message}
+          </div>
+        )}
+
+        {status.error && (
+          <div className="bg-red-100 text-red-700 text-sm p-3 rounded-md">
+            {status.error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {["name", "email", "password", "confirmPassword"].map((field) => (
+            <div key={field} className="relative">
+              <input
+                type={field.includes("password") ? "password" : "text"}
+                name={field}
+                value={formData[field]}
+                onChange={handleChange}
+                required
+                className="peer w-full bg-transparent border-b-2 border-gray-300 outline-none py-2 focus:border-blue-600 transition"
+              />
+              <label
+                className="absolute left-0 top-2 text-gray-500 text-sm pointer-events-none transition-all 
+                peer-focus:text-blue-600 peer-focus:-translate-y-4 peer-focus:text-xs 
+                peer-valid:-translate-y-4 peer-valid:text-xs"
+              >
+                {field === "confirmPassword"
+                  ? "Confirm Password"
+                  : field.charAt(0).toUpperCase() + field.slice(1)}
+              </label>
+            </div>
+          ))}
+
+          <button
+            type="submit"
+            disabled={status.loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition disabled:opacity-50"
+          >
+            {status.loading ? "Creating Account..." : "Create Account"}
+          </button>
+        </form>
+
+        <p className="text-center text-gray-600 text-sm">
+          Already have an account?{" "}
+          <Link to="/login" className="text-blue-600 underline hover:text-blue-800">
+            Login
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
 };
 
 export default Register;

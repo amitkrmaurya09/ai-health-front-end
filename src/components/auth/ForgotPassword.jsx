@@ -16,21 +16,32 @@ const ForgotPassword = () => {
         setMessage('');
 
         try {
-            const response = await api.auth.forgotPassword({ email });
-            const data = await response.json();
+            // THE FIX: Your api service returns the data directly.
+            // So, we name the variable 'data' from the start.
+            const data = await api.auth.forgotPassword({ email });
             
+            // Now, 'data' is the object {success: true, message: '...'}
             if (data.success) {
                 setMessage('OTP has been sent to your email address');
                 setTimeout(() => {
-                    navigate('/verify-otp', { state: { email } });
+                    // FIX: Add the 'type' to the state object
+                    navigate('/verify-otp', { state: { email, type: 'password_reset' } });
                 }, 2000);
             } else {
+                // Handle cases where the server responds with a success status (e.g., 200)
+                // but includes an error message in the JSON body.
                 setError(data.message || 'Failed to send OTP');
             }
-        } catch (error) {
+        } catch (err) {
+            // This will now catch actual network errors or server errors (e.g., 500, 404)
+            console.error("Forgot Password API Error:", err);
             setError('Something went wrong. Please try again.');
+        } finally {
+            // --- BEST PRACTICE ---
+            // The finally block runs whether the try block succeeded or failed,
+            // ensuring the loading state is always turned off.
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (

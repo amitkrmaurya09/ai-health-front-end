@@ -44,54 +44,71 @@ const Login = () => {
     };
 
     return (
-        <div className="container" style={{ padding: '4rem 0' }}>
-            <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-                <div className="card fade-in">
-                    <div className="card-header">
-                        <h2 className="card-title">Welcome Back</h2>
-                        <p style={{ color: 'var(--gray)', fontSize: '0.875rem' }}>
-                            Login to access your health dashboard
-                        </p>
+        <div className="flex justify-center items-center min-h-screen bg-gray-100 px-4">
+            <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8 space-y-6">
+
+                <div className="text-center space-y-1">
+                    <h2 className="text-3xl font-semibold">Welcome Back</h2>
+                    <p className="text-gray-500 text-sm">Login to access your health dashboard</p>
+                </div>
+
+                {message && (
+                    <div className="bg-green-100 text-green-700 text-sm p-3 rounded-md">
+                        {message}
                     </div>
-                    {message && <div className="alert alert-success">{message}</div>}
-                    {error && <div className="alert alert-error">{error}</div>}
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label className="form-label">Email</label>
+                )}
+
+                {error && (
+                    <div className="bg-red-100 text-red-700 text-sm p-3 rounded-md">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {["email", "password"].map((field) => (
+                        <div key={field} className="relative">
                             <input
-                                type="email"
-                                name="email"
-                                className="form-input"
-                                value={formData.email}
+                                type={field === "password" ? "password" : "email"}
+                                name={field}
+                                value={formData[field]}
                                 onChange={handleChange}
-                                placeholder="Enter your email"
                                 required
+                                className="peer w-full bg-transparent border-b-2 border-gray-300 outline-none py-2 focus:border-blue-600 transition"
                             />
+                            <label
+                                className="absolute left-0 top-2 text-gray-500 text-sm pointer-events-none transition-all 
+                                peer-focus:text-blue-600 peer-focus:-translate-y-4 peer-focus:text-xs 
+                                peer-valid:-translate-y-4 peer-valid:text-xs"
+                            >
+                                {field.charAt(0).toUpperCase() + field.slice(1)}
+                            </label>
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Password</label>
-                            <input
-                                type="password"
-                                name="password"
-                                className="form-input"
-                                value={formData.password}
-                                onChange={handleChange}
-                                placeholder="Enter your password"
-                                required
-                            />
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-                            {loading ? 'Logging in...' : 'Login'}
-                        </button>
-                    </form>
-                    <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                        <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: '0.875rem' }}>
+                    ))}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition disabled:opacity-50"
+                    >
+                        {loading ? 'Logging in...' : 'Login'}
+                    </button>
+                </form>
+
+                <div className="text-center space-y-2">
+                    <div>
+                        <Link 
+                            to="/forgot-password" 
+                            className="text-blue-600 text-sm hover:underline"
+                        >
                             Forgot your password?
                         </Link>
                     </div>
-                    <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                        <p>Don't have an account? <Link to="/register" style={{ color: 'var(--primary)' }}>Register</Link></p>
-                    </div>
+                    <p className="text-gray-600 text-sm">
+                        Don't have an account?{" "}
+                        <Link to="/register" className="text-blue-600 underline hover:text-blue-800">
+                            Register
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

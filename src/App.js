@@ -17,8 +17,13 @@ import HealthRecommendations from './components/healthRecommendations/HealthReco
 import ReportAnalyzer from './components/reportAnalyzer/ReportAnalyzer';
 import Profile from './components/profile/Profile';
 import './styles/styles.css';
+import './index.css'
+import Chatbot from './components/common/Chatbot';
 
 const App = () => {
+    const apiUrl = process.env.REACT_APP_API_URL;
+console.log(apiUrl);
+
     return (
         <AuthProvider>
             <BrowserRouter>
@@ -33,6 +38,9 @@ const App = () => {
                         <Route path="/verify-otp" element={<VerifyOTP />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         
+                        {/* --- THE DUPLICATE, PROTECTED ROUTE BELOW HAS BEEN REMOVED --- */}
+                        {/* <Route path="/verify-otp" element={<ProtectedRoute><VerifyOTP /></ProtectedRoute>} /> */}
+
                         {/* Protected Routes */}
                         <Route path="/dashboard" element={
                             <ProtectedRoute>
@@ -73,6 +81,7 @@ const App = () => {
                         {/* Default Route */}
                         <Route path="/" element={<Login />} />
                     </Routes>
+                    <Chatbot/>
                 </div>
             </BrowserRouter>
         </AuthProvider>

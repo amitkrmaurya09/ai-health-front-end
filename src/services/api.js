@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../utils/constants';
 
 class ApiService {
     constructor() {
-        this.baseURL = API_BASE_URL;
+        this.baseURL = API_BASE_URL || "http://localhost:5000/";
         this.isRefreshing = false;
         this.failedQueue = [];
     }
@@ -119,19 +119,25 @@ class ApiService {
             body: JSON.stringify(data)
         }).then(this.handleResponse),
 
-        verifyOTP: (data) => fetch(`${this.baseURL}api/auth/verify-otp`, {
-            method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify({
-                ...data, type: "email_verification"
-            })
-        }).then(this.handleResponse),
-
-        resetPassword: (data) => fetch(`${this.baseURL}api/auth/reset-password`, {
-            method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify(data)
-        }).then(this.handleResponse),
+        verifyOTP: (data) => {
+            // FIX: The type is now passed in the 'data' object, not hardcoded.
+            return fetch(`${this.baseURL}api/auth/verify-otp`, {
+                method: 'POST',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(data) // Just pass the whole data object
+            }).then(this.handleResponse);
+        },
+        
+        resetPassword: (data) => {
+            // FIX: The console.log is now inside the function, not a parameter to fetch.
+            console.log("Resetting password with data:", data);
+            return fetch(`${this.baseURL}api/auth/reset-password`, {
+                method: 'POST',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(data) // Just pass the whole data object
+            }).then(this.handleResponse);
+        },
+        
 
         refreshToken: (data) => fetch(`${this.baseURL}api/auth/refresh-token`, {
             method: 'POST',
@@ -152,11 +158,11 @@ class ApiService {
 
     // User endpoints
     users = {
-        getProfile: () => fetch(`${this.baseURL}/users/profile`, {
+        getProfile: () => fetch(`${this.baseURL}api/users/profile`, {
             headers: this.getAuthHeaders()
         }).then(this.handleResponse),
 
-        updateProfile: (data) => fetch(`${this.baseURL}/users/profile`, {
+        updateProfile: (data) => fetch(`${this.baseURL}api/users/profile`, {
             method: 'PUT',
             headers: this.getAuthHeaders(),
             body: JSON.stringify(data)

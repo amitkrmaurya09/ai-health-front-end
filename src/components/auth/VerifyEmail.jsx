@@ -1,220 +1,175 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import api from "../../services/api";
 
 const VerifyEmail = () => {
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [timeLeft, setTimeLeft] = useState(60);
-    const [isVerified, setIsVerified] = useState(false);
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { email, isRegistration } = location.state || {};
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [isVerified, setIsVerified] = useState(false);
 
-    useEffect(() => {
-        if (!email) {
-            navigate(isRegistration ? '/register' : '/forgot-password');
-        }
-    }, [email, isRegistration, navigate]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { email, isRegistration } = location.state || {};
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+  useEffect(() => {
+    if (!email) {
+      navigate(isRegistration ? "/register" : "/forgot-password");
+    }
+  }, [email, isRegistration, navigate]);
 
-        return () => clearInterval(timer);
-    }, []);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
 
-    const handleInputChange = (index, value) => {
-        if (value.length > 1) return;
-        
-        const newOtp = [...otp];
-        newOtp[index] = value;
-        setOtp(newOtp);
+    return () => clearInterval(timer);
+  }, []);
 
-        // Auto focus next input
-        if (value && index < 5) {
-            const nextInput = document.getElementById(`otp-${index + 1}`);
-            if (nextInput) nextInput.focus();
-        }
-    };
+  const handleInputChange = (index, value) => {
+    if (value.length > 1) return;
 
-    const handleKeyDown = (index, e) => {
-        // Handle backspace
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            const prevInput = document.getElementById(`otp-${index - 1}`);
-            if (prevInput) prevInput.focus();
-        }
-    };
+    const updated = [...otp];
+    updated[index] = value;
+    setOtp(updated);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const otpValue = otp.join('');
-        
-        if (otpValue.length !== 6) {
-            setError('Please enter all 6 digits');
-            return;
-        }
+    if (value && index < 5) {
+      document.getElementById(`otp-${index + 1}`)?.focus();
+    }
+  };
 
-        setLoading(true);
-        setError('');
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      document.getElementById(`otp-${index - 1}`)?.focus();
+    }
+  };
 
-        try {
-            console.log('Verifying OTP with:', { email, otp: otpValue }); // Debug log
-            
-            const result = await api.auth.verifyOTP({ email, otp: otpValue });
-            
-            console.log('OTP verification result:', result); // Debug log
-            
-            // Check for both possible response structures
-            if (result.success && (result.data?.verified || result.verified || result.data?.user?.isEmailVerified)) {
-                console.log('OTP verification successful'); // Debug log
-                setIsVerified(true);
-                
-                if (isRegistration) {
-                    setTimeout(() => {
-                        navigate('/login', { 
-                            state: { 
-                                message: 'Email verified successfully! Please login to continue.' 
-                            } 
-                        });
-                    }, 1500);
-                } else {
-                    navigate('/reset-password', { state: { email, otp: otpValue } });
-                }
-            } else {
-                setError(result.message || 'Invalid OTP');
-            }
-        } catch (error) {
-            console.error('OTP verification error:', error); // Debug log
-            setError('Something went wrong. Please try again.');
-        }
-        setLoading(false);
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const otpValue = otp.join("");
 
-    const handleResendOTP = async () => {
-        setLoading(true);
-        setError('');
+    if (otpValue.length !== 6) return setError("Please enter all 6 digits.");
 
-        try {
-            console.log('Resending OTP to:', email); // Debug log
-            
-            const result = await api.auth.forgotPassword({ email });
-            
-            console.log('Resend OTP result:', result); // Debug log
-            
-            if (result.success) {
-                setTimeLeft(60);
-                setError('');
-            } else {
-                setError(result.message || 'Failed to resend OTP');
-            }
-        } catch (error) {
-            console.error('Resend OTP error:', error); // Debug log
-            setError('Something went wrong. Please try again.');
-        }
-        setLoading(false);
-    };
+    setLoading(true);
+    setError("");
 
-    if (isVerified) {
-        return (
-            <div className="container" style={{ padding: '4rem 0' }}>
-                <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-                    <div className="card fade-in">
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <div style={{ 
-                                width: '80px', 
-                                height: '80px', 
-                                background: 'rgba(16, 185, 129, 0.1)',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto 1.5rem'
-                            }}>
-                                <i className="fas fa-check" style={{ 
-                                    fontSize: '2rem', 
-                                    color: 'var(--success)' 
-                                }}></i>
-                            </div>
-                            <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>
-                                Email Verified!
-                            </h3>
-                            <p style={{ color: 'var(--gray)' }}>
-                                Redirecting you to login...
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+    try {
+      const result = await api.auth.verifyOTP({ email, otp: otpValue });
+
+      if (result.success && (result.data?.verified || result.verified)) {
+        setIsVerified(true);
+
+        setTimeout(() => {
+          navigate(isRegistration ? "/login" : "/reset-password", {
+            state: { email, otp: otpValue },
+          });
+        }, 1500);
+      } else {
+        setError(result.message || "Invalid OTP");
+      }
+    } catch {
+      setError("Something went wrong. Try again.");
     }
 
+    setLoading(false);
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+
+    try {
+      const result = await api.auth.forgotPassword({ email });
+      if (result.success) {
+        setTimeLeft(60);
+      } else {
+        setError(result.message || "Failed to resend code.");
+      }
+    } catch {
+      setError("Something went wrong.");
+    }
+
+    setLoading(false);
+  };
+
+  // Success UI
+  if (isVerified) {
     return (
-        <div className="container" style={{ padding: '4rem 0' }}>
-            <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-                <div className="card fade-in">
-                    <div className="card-header">
-                        <h2 className="card-title">
-                            {isRegistration ? 'Verify Your Email' : 'Verify OTP'}
-                        </h2>
-                        <p style={{ color: 'var(--gray)', fontSize: '0.875rem' }}>
-                            Enter the 6-digit code sent to<br />
-                            <strong>{email}</strong>
-                        </p>
-                    </div>
-                    {error && <div className="alert alert-error">{error}</div>}
-                    <form onSubmit={handleSubmit}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                            {otp.map((digit, index) => (
-                                <input
-                                    key={index}
-                                    id={`otp-${index}`}
-                                    type="text"
-                                    className="form-input otp-input"
-                                    value={digit}
-                                    onChange={(e) => handleInputChange(index, e.target.value)}
-                                    onKeyDown={(e) => handleKeyDown(index, e)}
-                                    maxLength={1}
-                                    required
-                                />
-                            ))}
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-                            {loading ? 'Verifying...' : 'Verify Email'}
-                        </button>
-                    </form>
-                    <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                        {timeLeft > 0 ? (
-                            <p style={{ color: 'var(--gray)' }}>
-                                Resend code in <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{timeLeft}s</span>
-                            </p>
-                        ) : (
-                            <button 
-                                className="btn btn-outline btn-sm" 
-                                onClick={handleResendOTP}
-                                disabled={loading}
-                            >
-                                <i className="fas fa-redo"></i> Resend Code
-                            </button>
-                        )}
-                        <div style={{ marginTop: '1rem' }}>
-                            <Link to="/login" style={{ color: 'var(--primary)' }}>
-                                <i className="fas fa-arrow-left"></i> Back to Login
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center space-y-4 w-full max-w-md">
+          <div className="w-20 h-20 bg-green-100 flex items-center justify-center rounded-full mx-auto">
+            <span className="text-3xl text-green-600">✔</span>
+          </div>
+          <h2 className="text-xl font-semibold text-green-600">Email Verified!</h2>
+          <p className="text-gray-600">Redirecting you shortly...</p>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
+      <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg space-y-6">
+
+        <div className="text-center space-y-1">
+          <h2 className="text-2xl font-semibold">
+            {isRegistration ? "Verify Your Email" : "Enter OTP"}
+          </h2>
+          <p className="text-gray-500 text-sm">
+            We sent a code to <br />
+            <span className="font-medium text-gray-700">{email}</span>
+          </p>
+        </div>
+
+        {error && <div className="bg-red-100 text-red-600 p-2 rounded-md text-sm">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-center gap-3">
+            {otp.map((digit, index) => (
+              <input
+                key={index}
+                id={`otp-${index}`}
+                type="text"
+                value={digit}
+                maxLength={1}
+                onChange={(e) => handleInputChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                className="w-12 text-center text-2xl font-semibold border-b-2 border-gray-400 outline-none focus:border-blue-600 transition bg-transparent"
+              />
+            ))}
+          </div>
+
+          <button
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? "Verifying..." : "Verify Email"}
+          </button>
+        </form>
+
+        <div className="text-center space-y-3">
+          {timeLeft > 0 ? (
+            <p className="text-gray-600 text-sm">
+              Resend OTP in{" "}
+              <span className="font-semibold text-blue-600">{timeLeft}s</span>
+            </p>
+          ) : (
+            <button
+              onClick={handleResendOTP}
+              disabled={loading}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Resend Code
+            </button>
+          )}
+
+          <Link to="/login" className="block text-gray-600 hover:underline text-sm">
+            ← Back to Login
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default VerifyEmail;

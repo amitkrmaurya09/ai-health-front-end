@@ -1,195 +1,129 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { analyzeReportWithGemini } from "../../services/geminiReport";
 
 const ReportAnalyzer = () => {
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [analyzing, setAnalyzing] = useState(false);
-    const [results, setResults] = useState(null);
+  const [file, setFile] = useState(null);
+  const [textContent, setTextContent] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [results, setResults] = useState(null);
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setUploadedFile(file);
-        }
-    };
+  const readFileText = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(file);
+    });
+  };
 
-    const handleAnalyze = () => {
-        if (!uploadedFile) {
-            alert('Please upload a report first');
-            return;
-        }
+  const handleFileUpload = async (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
 
-        setAnalyzing(true);
-        
-        // Simulate analysis
-        setTimeout(() => {
-            setResults({
-                fileName: uploadedFile.name,
-                analysisDate: new Date().toLocaleDateString(),
-                findings: [
-                    'Blood pressure: Normal (120/80)',
-                    'Cholesterol levels: Slightly elevated',
-                    'Blood sugar: Within normal range',
-                    'Vitamin D: Deficient - recommend supplements'
-                ],
-                recommendations: [
-                    'Increase physical activity',
-                    'Consider cholesterol-lowering diet',
-                    'Take Vitamin D supplements',
-                    'Follow up in 3 months'
-                ],
-                overallHealth: 'Good'
-            });
-            setAnalyzing(false);
-        }, 3000);
-    };
+    setFile(selected);
+    setResults(null);
 
-    return (
-        <div className="container" style={{ padding: '2rem 0' }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '2rem', color: 'white' }}>Medical Report Analyzer</h1>
-            
-            <UploadSection 
-                onFileUpload={handleFileUpload}
-                uploadedFile={uploadedFile}
-                onAnalyze={handleAnalyze}
-                analyzing={analyzing}
-            />
-            
-            {results && <AnalysisResults results={results} />}
-        </div>
-    );
-};
+    const extractedText = await readFileText(selected);
+    setTextContent(extractedText);
+  };
 
-const UploadSection = ({ onFileUpload, uploadedFile, onAnalyze, analyzing }) => {
-    return (
-        <div className="card">
-            <div className="card-header">
-                <h3 className="card-title">Upload Your Medical Report</h3>
-            </div>
+  const handleAnalyze = async () => {
+    if (!textContent) return alert("Please upload a file first");
 
-            <div className="upload-area" onClick={() => document.getElementById('fileInput').click()}>
-                <i className="fas fa-cloud-upload-alt upload-icon"></i>
-                <h4>Click to upload or drag and drop</h4>
-                <p style={{ color: 'var(--gray)', marginTop: '0.5rem' }}>
-                    PDF, JPG, PNG up to 10MB
-                </p>
-                <input 
-                    type="file" 
-                    id="fileInput" 
-                    style={{ display: 'none' }}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={onFileUpload}
-                />
-            </div>
+    setAnalyzing(true);
+    try {
+      const response = await analyzeReportWithGemini(textContent);
+      setResults(response);
+    } catch (err) {
+      alert(err.message);
+    }
+    setAnalyzing(false);
+  };
 
-            {uploadedFile && (
-                <FileDisplay 
-                    file={uploadedFile}
-                    onAnalyze={onAnalyze}
-                    analyzing={analyzing}
-                />
-            )}
-        </div>
-    );
-};
+  return (
+    <div className="max-w-xl mx-auto p-6 text-white">
+      {/* Title */}
+      <h2 className="text-3xl font-semibold text-center mb-6">
+        🧬 AI Medical Report Analyzer
+      </h2>
 
-const FileDisplay = ({ file, onAnalyze, analyzing }) => {
-    return (
-        <div style={{ 
-            padding: '1rem',
-            background: 'var(--light-gray)',
-            borderRadius: '8px',
-            marginTop: '1rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-        }}>
-            <div>
-                <i className="fas fa-file"></i> {file.name}
-            </div>
-            <button 
-                className="btn btn-primary"
-                onClick={onAnalyze}
-                disabled={analyzing}
+      {/* Upload Box */}
+      <div
+        className="border-2 border-dashed border-blue-400 p-6 rounded-xl cursor-pointer transition hover:bg-blue-500/10 text-center"
+        onClick={() => document.getElementById("fileInput").click()}
+      >
+        <div className="text-5xl mb-2 text-blue-300">📄</div>
+        <p className="text-lg font-medium">
+          {file ? file.name : "Click to upload your medical report"}
+        </p>
+        <p className="text-sm opacity-60 mt-1">Supported: TXT / RTF / PDF</p>
+        <input
+          id="fileInput"
+          type="file"
+          className="hidden"
+          accept=".txt,.rtf,.pdf"
+          onChange={handleFileUpload}
+        />
+      </div>
+
+      {/* Button */}
+      <button
+        onClick={handleAnalyze}
+        disabled={!file || analyzing}
+        className={`w-full mt-4 py-3 text-lg rounded-lg transition font-medium ${
+          analyzing
+            ? "bg-gray-500 cursor-not-allowed"
+            : file
+            ? "bg-gradient-to-r from-cyan-400 to-blue-500 hover:opacity-90"
+            : "bg-gray-600 cursor-not-allowed"
+        }`}
+      >
+        {analyzing ? "🔍 Analyzing..." : "🚀 Analyze Report"}
+      </button>
+
+      {/* Results */}
+      {results && (
+        <div className="mt-6 p-5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
+          <h3 className="text-xl font-bold mb-3">📊 Analysis Results</h3>
+
+          {/* Health Badge */}
+          <p className="text-lg mb-4 font-medium">
+            🏥 Overall Health:{" "}
+            <span
+              className={`ml-2 px-3 py-1 text-sm rounded-full ${
+                results.overallHealth === "Good"
+                  ? "bg-green-500/20 text-green-300"
+                  : results.overallHealth === "Fair"
+                  ? "bg-yellow-500/20 text-yellow-300"
+                  : "bg-red-500/20 text-red-300"
+              }`}
             >
-                {analyzing ? 'Analyzing...' : 'Analyze Report'}
-            </button>
-        </div>
-    );
-};
+              {results.overallHealth}
+            </span>
+          </p>
 
-const AnalysisResults = ({ results }) => {
-    return (
-        <div className="card" style={{ marginTop: '2rem' }}>
-            <div className="card-header">
-                <h3 className="card-title">Analysis Results</h3>
-                <HealthStatusBadge status={results.overallHealth} />
-            </div>
-
-            <FindingsSection findings={results.findings} />
-            <RecommendationsSection recommendations={results.recommendations} />
-            <AnalysisMeta results={results} />
-        </div>
-    );
-};
-
-const HealthStatusBadge = ({ status }) => {
-    return (
-        <span style={{ 
-            padding: '0.5rem 1rem',
-            background: 'rgba(16, 185, 129, 0.1)',
-            color: 'var(--success)',
-            borderRadius: '20px',
-            fontWeight: '500'
-        }}>
-            Overall Health: {status}
-        </span>
-    );
-};
-
-const FindingsSection = ({ findings }) => {
-    return (
-        <div style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>
-                <i className="fas fa-clipboard-list"></i> Key Findings
-            </h4>
-            <ul style={{ paddingLeft: '1.5rem' }}>
-                {findings.map((finding, index) => (
-                    <li key={index} style={{ marginBottom: '0.5rem' }}>{finding}</li>
-                ))}
+          {/* Findings */}
+          <div className="mb-4">
+            <h4 className="text-lg font-semibold mb-2">🧾 Key Findings</h4>
+            <ul className="list-disc ml-5 space-y-1">
+              {results.findings.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
             </ul>
-        </div>
-    );
-};
+          </div>
 
-const RecommendationsSection = ({ recommendations }) => {
-    return (
-        <div>
-            <h4 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>
-                <i className="fas fa-lightbulb"></i> Recommendations
-            </h4>
-            <ul style={{ paddingLeft: '1.5rem' }}>
-                {recommendations.map((rec, index) => (
-                    <li key={index} style={{ marginBottom: '0.5rem' }}>{rec}</li>
-                ))}
+          {/* Recommendations */}
+          <div>
+            <h4 className="text-lg font-semibold mb-2">💡 Recommendations</h4>
+            <ul className="list-disc ml-5 space-y-1">
+              {results.recommendations.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
             </ul>
+          </div>
         </div>
-    );
-};
-
-const AnalysisMeta = ({ results }) => {
-    return (
-        <div style={{ 
-            marginTop: '1.5rem',
-            padding: '1rem',
-            background: 'var(--light-gray)',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            color: 'var(--gray)'
-        }}>
-            <i className="fas fa-info-circle"></i> 
-            Analyzed on {results.analysisDate} • File: {results.fileName}
-        </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default ReportAnalyzer;

@@ -1,50 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const HealthRecommendations = () => {
-    const [recommendations] = useState([
-        {
-            id: 1,
-            title: 'Stay Hydrated',
-            description: 'Drink at least 8 glasses of water daily to maintain proper body functions.',
-            icon: 'fa-tint',
-            category: 'Nutrition'
-        },
-        {
-            id: 2,
-            title: 'Regular Exercise',
-            description: 'Aim for 30 minutes of moderate exercise 5 days a week for better health.',
-            icon: 'fa-running',
-            category: 'Fitness'
-        },
-        {
-            id: 3,
-            title: 'Get Enough Sleep',
-            description: 'Adults need 7-9 hours of quality sleep each night for optimal health.',
-            icon: 'fa-bed',
-            category: 'Lifestyle'
-        },
-        {
-            id: 4,
-            title: 'Eat Balanced Meals',
-            description: 'Include fruits, vegetables, proteins, and whole grains in your diet.',
-            icon: 'fa-apple-alt',
-            category: 'Nutrition'
-        },
-        {
-            id: 5,
-            title: 'Practice Mindfulness',
-            description: 'Meditation and deep breathing can reduce stress and improve mental health.',
-            icon: 'fa-spa',
-            category: 'Mental Health'
-        },
-        {
-            id: 6,
-            title: 'Regular Health Checkups',
-            description: 'Visit your doctor annually for preventive care and early detection.',
-            icon: 'fa-stethoscope',
-            category: 'Prevention'
-        }
-    ]);
+    const [recommendations, setRecommendations] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchRecommendations = async () => {
+            try {
+                // Adjust this URL to match your backend route structure
+                // e.g., if your app uses /api/health, this becomes /api/health/recommendations
+                // Inside your React useEffect:
+                const response = await fetch('http://localhost:5000/api/health/recommendations');
+                console.log(response);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+
+                const data = await response.json();
+                setRecommendations(data);
+                setLoading(false);
+            } catch (err) {
+                console.error("Error fetching recommendations:", err);
+                setError("Could not load fresh tips. Please try again later.");
+                setLoading(false);
+            }
+        };
+
+        fetchRecommendations();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="container" style={{ padding: '2rem 0', color: 'white', textAlign: 'center' }}>
+                <h2><i className="fas fa-spinner fa-spin"></i> Generating personalized health tips...</h2>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="container" style={{ padding: '2rem 0', color: 'white', textAlign: 'center' }}>
+                <h3>{error}</h3>
+            </div>
+        );
+    }
 
     return (
         <div className="container" style={{ padding: '2rem 0' }}>
@@ -52,12 +52,13 @@ const HealthRecommendations = () => {
             
             <div className="card">
                 <div className="card-header">
-                    <h3 className="card-title">Personalized Health Tips</h3>
-                    <span style={{ color: 'var(--gray)' }}>Based on your health profile</span>
+                    <h3 className="card-title">AI-Powered Health Tips</h3>
+                    <span style={{ color: 'var(--gray)' }}>Freshly generated via Gemini</span>
                 </div>
 
-                {recommendations.map(rec => (
-                    <RecommendationCard key={rec.id} recommendation={rec} />
+                {recommendations.map((rec, index) => (
+                    // Fallback to index if ID is missing from AI response
+                    <RecommendationCard key={rec.id || index} recommendation={rec} />
                 ))}
             </div>
         </div>
@@ -68,7 +69,8 @@ const RecommendationCard = ({ recommendation }) => {
     return (
         <div className="recommendation-card">
             <div className="recommendation-title">
-                <i className={`fas ${recommendation.icon}`}></i>
+                {/* Ensure we handle the icon class correctly */}
+                <i className={`fas ${recommendation.icon || 'fa-heart'}`}></i>
                 {recommendation.title}
             </div>
             <p style={{ color: 'var(--gray)', lineHeight: '1.6' }}>{recommendation.description}</p>

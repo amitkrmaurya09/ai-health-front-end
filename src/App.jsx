@@ -12,6 +12,7 @@ import EmergencyContacts from './components/emergencyContacts/EmergencyContacts'
 import HealthRecommendations from './components/healthRecommendations/HealthRecommendations';
 import ReportAnalyzer from './components/reportAnalyzer/ReportAnalyzer';
 import Profile from './components/profile/Profile';
+import Chatbot from './components/common/Chatbot';
 
 import './styles/styles.css';
 
@@ -61,6 +62,7 @@ const App = () => {
                         } />
                         <Route path="/" element={<Login />} />
                     </Routes>
+                    <Chatbot/>
                 </div>
             </BrowserRouter>
         </AuthProvider>
