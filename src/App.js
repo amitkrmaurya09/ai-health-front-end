@@ -19,10 +19,12 @@ import Profile from './components/profile/Profile';
 import './styles/styles.css';
 import './index.css'
 import Chatbot from './components/common/Chatbot';
+import DoctorProfile from './pages/DoctorProfile';
+
 
 const App = () => {
     const apiUrl = process.env.REACT_APP_API_URL;
-console.log(apiUrl);
+    console.log(apiUrl);
 
     return (
         <AuthProvider>
@@ -37,7 +39,7 @@ console.log(apiUrl);
                         <Route path="/verify-email" element={<VerifyEmail />} />
                         <Route path="/verify-otp" element={<VerifyOTP />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
-                        
+
                         {/* --- THE DUPLICATE, PROTECTED ROUTE BELOW HAS BEEN REMOVED --- */}
                         {/* <Route path="/verify-otp" element={<ProtectedRoute><VerifyOTP /></ProtectedRoute>} /> */}
 
@@ -45,6 +47,11 @@ console.log(apiUrl);
                         <Route path="/dashboard" element={
                             <ProtectedRoute>
                                 <Dashboard />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/doctor-profile" element={
+                            <ProtectedRoute>
+                                <DoctorProfile/>
                             </ProtectedRoute>
                         } />
                         <Route path="/symptom-checker" element={
@@ -77,11 +84,11 @@ console.log(apiUrl);
                                 <Profile />
                             </ProtectedRoute>
                         } />
-                        
+
                         {/* Default Route */}
                         <Route path="/" element={<Login />} />
                     </Routes>
-                    <Chatbot/>
+                    <Chatbot />
                 </div>
             </BrowserRouter>
         </AuthProvider>

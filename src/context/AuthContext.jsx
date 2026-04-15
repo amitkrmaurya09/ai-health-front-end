@@ -22,9 +22,9 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('Verifying stored token...'); // Debug log
             const result = await api.users.getProfile();
-            
+
             console.log('Token verification response:', result); // Debug log
-            
+
             // Handle the response structure properly
             if (result.success && result.data?.user?.isEmailVerified) {
                 console.log('Token valid, setting user:', result.data.user); // Debug log
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
             }
         } catch (error) {
             console.error('Token verification failed:', error); // Debug log
-            
+
             // Check if it's a network error or token expired
             if (error.message.includes('401') || error.message.includes('Unauthorized') || error.message.includes('Token')) {
                 console.log('Token expired or invalid, clearing...'); // Debug log
@@ -63,28 +63,31 @@ export const AuthProvider = ({ children }) => {
     const login = async (credentials) => {
         try {
             const result = await api.auth.login(credentials);
-            
+
             console.log('Login response:', result); // Debug log
             console.log('User data:', result.data?.user); // Debug log
             console.log('Email verified:', result.data?.user?.isEmailVerified); // Debug log
-            
+
             // Check the top-level success property
             if (result.success) {
                 // Access user data through result.data.user
                 const userData = result.data?.user;
-                
+
                 if (userData && userData.isEmailVerified === true) {
                     console.log('Email is verified, logging in...'); // Debug log
-                    
+
                     // Store token and user data
                     localStorage.setItem('token', result.data.token);
                     setUser(userData);
-                    
-                    return { success: true };
+
+                    return {
+                        success: true,
+                        user: userData // ✅ ADD THIS
+                    };
                 } else {
                     console.log('Email is not verified'); // Debug log
-                    return { 
-                        success: false, 
+                    return {
+                        success: false,
                         message: 'Please verify your email before logging in',
                         needsVerification: true,
                         email: userData?.email
@@ -115,7 +118,7 @@ export const AuthProvider = ({ children }) => {
     const register = async (userData) => { // Added register function
         try {
             const result = await api.auth.register(userData);
-            
+
             if (result.success) {
                 // Don't log in automatically - require email verification
                 return { success: true, message: result.message };

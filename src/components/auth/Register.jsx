@@ -7,10 +7,11 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'patient' // ✅ default
   });
 
   const [status, setStatus] = useState({
@@ -43,6 +44,7 @@ const Register = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
+        role: formData.role // ✅ ADD THIS
       });
 
       if (result.success) {
@@ -99,6 +101,32 @@ const Register = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* ✅ ROLE SELECTOR */}
+          <div className="flex gap-6 justify-center">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="role"
+                value="patient"
+                checked={formData.role === 'patient'}
+                onChange={handleChange}
+              />
+              Patient
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="role"
+                value="doctor"
+                checked={formData.role === 'doctor'}
+                onChange={handleChange}
+              />
+              Doctor
+            </label>
+          </div>
+
           {["name", "email", "password", "confirmPassword"].map((field) => (
             <div key={field} className="relative">
               <input

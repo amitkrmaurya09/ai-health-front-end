@@ -15,6 +15,7 @@ import Profile from './components/profile/Profile';
 import Chatbot from './components/common/Chatbot';
 
 import './styles/styles.css';
+import DoctorProfile from './components/pages/DoctorProfile';
 
 const App = () => {
     return (
@@ -50,6 +51,11 @@ const App = () => {
                                 <HealthRecommendations />
                             </ProtectedRoute>
                         } />
+                        <Route path="/doctor-profile" element={
+                            <ProtectedRoute>
+                                <DoctorProfile />
+                            </ProtectedRoute>
+                        } />
                         <Route path="/report-analyzer" element={
                             <ProtectedRoute>
                                 <ReportAnalyzer />
@@ -62,7 +68,7 @@ const App = () => {
                         } />
                         <Route path="/" element={<Login />} />
                     </Routes>
-                    <Chatbot/>
+                    <Chatbot />
                 </div>
             </BrowserRouter>
         </AuthProvider>

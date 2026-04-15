@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FaUserMd, FaStar, FaCalendarAlt, FaEdit, FaTrash, FaPlus, FaSearch, FaTimes, FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import { useAuth } from '../../hooks/useAuth';
 
 const DoctorConsultation = () => {
     const [doctors, setDoctors] = useState([]);
@@ -12,79 +13,73 @@ const DoctorConsultation = () => {
     const [notification, setNotification] = useState(null);
 
     useEffect(() => {
-        const storedDoctors = localStorage.getItem('doctors');
-        if (storedDoctors) {
-            setDoctors(JSON.parse(storedDoctors));
-        } else {
-            const defaultDoctors = [
-                {
-                    id: Date.now(),
-                    name: 'Dr. Sarah Johnson',
-                    specialty: 'General Physician',
-                    rating: 4.8,
-                    experience: '10 years',
-                    availability: 'Available Today',
-                    price: '50',
-                    phone: '+1 234-567-8901',
-                    email: 'sarah.johnson@hospital.com',
-                    location: 'New York, NY'
-                },
-                {
-                    id: Date.now() + 1,
-                    name: 'Dr. Michael Chen',
-                    specialty: 'Cardiologist',
-                    rating: 4.9,
-                    experience: '15 years',
-                    availability: 'Tomorrow',
-                    price: '100',
-                    phone: '+1 234-567-8902',
-                    email: 'michael.chen@hospital.com',
-                    location: 'Los Angeles, CA'
-                },
-                {
-                    id: Date.now() + 2,
-                    name: 'Dr. Emily Davis',
-                    specialty: 'Pediatrician',
-                    rating: 4.7,
-                    experience: '8 years',
-                    availability: 'Available Today',
-                    price: '60',
-                    phone: '+1 234-567-8903',
-                    email: 'emily.davis@hospital.com',
-                    location: 'Chicago, IL'
+        fetch('http://localhost:5000/api/doctor/all')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    setDoctors(data.data);
                 }
-            ];
-            setDoctors(defaultDoctors);
-            localStorage.setItem('doctors', JSON.stringify(defaultDoctors));
-        }
+            })
+            .catch(() => {
+                showNotification('Failed to load doctors', 'error');
+            });
     }, []);
 
-    useEffect(() => {
-        if (doctors.length > 0) {
-            localStorage.setItem('doctors', JSON.stringify(doctors));
-        }
-    }, [doctors]);
+    // useEffect(() => {
+    //     if (doctors.length > 0) {
+    //         localStorage.setItem('doctors', JSON.stringify(doctors));
+    //     }
+    // }, [doctors]);
 
     const specialties = ['all', 'General Physician', 'Cardiologist', 'Pediatrician', 'Neurologist', 'Orthopedic', 'Dermatologist'];
 
     const filteredDoctors = doctors.filter(doctor => {
-        const matchesSearch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesSpecialty = filterSpecialty === 'all' || doctor.specialty === filterSpecialty;
+        const matchesSearch =
+            doctor.userId?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+            doctor.specialty?.toLowerCase()?.includes(searchTerm.toLowerCase());
+
+        const matchesSpecialty =
+            filterSpecialty === 'all' || doctor.specialty === filterSpecialty;
+
         return matchesSearch && matchesSpecialty;
     });
+    const handleBookAppointment = async (doctor) => {
 
-    const handleBookAppointment = (doctor) => {
-        const appointment = {
-            doctorId: doctor.id,
-            doctorName: doctor.name,
-            timestamp: new Date().toISOString(),
-            status: 'pending'
-        };
-        const appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-        appointments.push(appointment);
-        localStorage.setItem('appointments', JSON.stringify(appointments));
-        showNotification(`Appointment booked with ${doctor.name}!`, 'success');
+        const res = await loadRazorpay();
+
+        if (!res) {
+            alert("Razorpay failed to load");
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:5000/api/payment/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: doctor.fees })
+            });
+
+            const data = await response.json();
+
+            const options = {
+                key: "rzp_test_Sd45ypBuml3NcI", // 👈 apni key daal
+                amount: data.order.amount,
+                currency: "INR",
+                name: "MediPredict",
+                description: "Doctor Consultation",
+                order_id: data.order.id,
+
+                handler: function (response) {
+                    alert("Payment Successful 🎉");
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     const handleEditDoctor = (doctor) => {
@@ -106,14 +101,15 @@ const DoctorConsultation = () => {
         setNotification({ message, type });
         setTimeout(() => setNotification(null), 3000);
     };
+    const { user } = useAuth();
+    const aiData = JSON.parse(localStorage.getItem('aiResult') || '{}');
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             {/* Notification */}
             {notification && (
-                <div className={`fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-4 flex items-center gap-3 animate-slide-in ${
-                    notification.type === 'success' ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'
-                }`}>
+                <div className={`fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-4 flex items-center gap-3 animate-slide-in ${notification.type === 'success' ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'
+                    }`}>
                     <span className="text-gray-700">{notification.message}</span>
                     <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-gray-600">
                         <FaTimes />
@@ -132,7 +128,7 @@ const DoctorConsultation = () => {
                             </h1>
                             <p className="text-gray-600 mt-1">Find and book appointments with qualified doctors</p>
                         </div>
-                        <button 
+                        <button
                             onClick={() => setShowModal(true)}
                             className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
                         >
@@ -154,8 +150,8 @@ const DoctorConsultation = () => {
                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
-                        <select 
-                            value={filterSpecialty} 
+                        <select
+                            value={filterSpecialty}
                             onChange={(e) => setFilterSpecialty(e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
@@ -179,11 +175,11 @@ const DoctorConsultation = () => {
                     ) : (
                         filteredDoctors.map(doctor => (
                             <DoctorCard
-                                key={doctor.id}
+                                key={doctor._id}
                                 doctor={doctor}
                                 onBook={() => handleBookAppointment(doctor)}
                                 onEdit={() => handleEditDoctor(doctor)}
-                                onDelete={() => handleDeleteDoctor(doctor.id)}
+                                onDelete={() => handleDeleteDoctor(doctor._id)}
                             />
                         ))
                     )}
@@ -199,7 +195,7 @@ const DoctorConsultation = () => {
                     }}
                     onSave={(doctorData) => {
                         if (editingDoctor) {
-                            setDoctors(doctors.map(d => d.id === editingDoctor.id ? { ...doctorData, id: editingDoctor.id } : d));
+                            setDoctors(doctors.map(d => d._id === editingDoctor._id ? { ...doctorData, _id: editingDoctor._id } : d));
                             showNotification('Doctor updated successfully!', 'success');
                         } else {
                             setDoctors([...doctors, { ...doctorData, id: Date.now() }]);
@@ -219,13 +215,13 @@ const DoctorConsultation = () => {
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Delete</h3>
                         <p className="text-gray-600 mb-4">Are you sure you want to delete this doctor?</p>
                         <div className="flex gap-3 justify-end">
-                            <button 
+                            <button
                                 onClick={() => setShowDeleteConfirm(null)}
                                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                             >
                                 Cancel
                             </button>
-                            <button 
+                            <button
                                 onClick={() => confirmDelete(showDeleteConfirm)}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                             >
@@ -239,67 +235,56 @@ const DoctorConsultation = () => {
     );
 };
 
-const DoctorCard = ({ doctor, onBook, onEdit, onDelete }) => {
-    return (
-        <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <img 
-                        src={`https://picsum.photos/seed/doctor${doctor.id}/80/80`}
-                        alt={doctor.name}
-                        className="w-16 h-16 rounded-full object-cover"
-                    />
-                    <div className="flex gap-1">
-                        <button 
-                            onClick={onEdit}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            <FaEdit size={14} />
-                        </button>
-                        <button 
-                            onClick={onDelete}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                            <FaTrash size={14} />
-                        </button>
-                    </div>
-                </div>
-                
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{doctor.name}</h3>
-                <p className="text-blue-600 text-sm font-medium mb-3">{doctor.specialty}</p>
-                
-                <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaStar className="text-yellow-500" size={12} />
-                        <span>{doctor.rating} rating</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaClock className="text-gray-400" size={12} />
-                        <span>{doctor.experience}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaPhone className="text-gray-400" size={12} />
-                        <span>{doctor.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaMapMarkerAlt className="text-gray-400" size={12} />
-                        <span>{doctor.location}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-                        <FaCalendarAlt size={12} />
-                        <span>{doctor.availability}</span>
-                    </div>
-                </div>
+const loadRazorpay = () => {
+    return new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+};
 
-                <div className="flex items-center justify-between pt-4 border-t">
-                    <span className="text-xl font-bold text-gray-900">${doctor.price}</span>
-                    <button 
-                        onClick={onBook}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    >
-                        Book Now
-                    </button>
+
+const DoctorCard = ({ doctor, onBook }) => {
+    return (
+        <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-5 flex flex-col gap-3">
+
+            {/* Top Section */}
+            <div className="flex items-center gap-4">
+                <img
+                    src={`https://i.pravatar.cc/100?img=${doctor._id}`}
+                    className="w-16 h-16 rounded-full border-2 border-blue-500"
+                    alt="doctor"
+                />
+
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-800">
+                        {doctor.userId?.name || "Doctor"}
+                    </h3>
+                    <p className="text-sm text-gray-500">{doctor.specialty}</p>
                 </div>
+            </div>
+
+            {/* Details */}
+            <div className="text-sm text-gray-600 space-y-1">
+                <p>🧠 Experience: {doctor.experience} yrs</p>
+                <p>📍 {doctor.location}</p>
+                <p>⭐ Rating: {doctor.rating || 4.5}</p>
+            </div>
+
+            {/* Bottom Section */}
+            <div className="flex items-center justify-between mt-3">
+                <span className="text-blue-600 font-bold text-lg">
+                    ₹{doctor.fees}
+                </span>
+
+                <button
+                    onClick={onBook}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200"
+                >
+                    Book Now
+                </button>
             </div>
         </div>
     );
@@ -337,14 +322,14 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                     <h2 className="text-xl font-semibold text-gray-900">
                         {editingDoctor ? 'Edit Doctor' : 'Add New Doctor'}
                     </h2>
-                    <button 
+                    <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-gray-600 transition-colors text-xl"
                     >
                         <FaTimes />
                     </button>
                 </div>
-                
+
                 <form onSubmit={handleSubmit} className="p-6">
                     {/* Extended 3-Column Grid Layout */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -360,13 +345,13 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 placeholder="Dr. John Doe"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Specialty *</label>
-                            <select 
-                                name="specialty" 
-                                value={formData.specialty} 
-                                onChange={handleChange} 
+                            <select
+                                name="specialty"
+                                value={formData.specialty}
+                                onChange={handleChange}
                                 required
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
@@ -375,7 +360,7 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 ))}
                             </select>
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Rating (0-5) *</label>
                             <input
@@ -391,7 +376,7 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 placeholder="4.5"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Experience *</label>
                             <input
@@ -404,7 +389,7 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
                             <input
@@ -418,7 +403,7 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 placeholder="50"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
                             <input
@@ -431,7 +416,7 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 placeholder="+1 234-567-8900"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                             <input
@@ -444,7 +429,7 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 placeholder="doctor@hospital.com"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
                             <input
@@ -457,13 +442,13 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Availability *</label>
-                            <select 
-                                name="availability" 
-                                value={formData.availability} 
-                                onChange={handleChange} 
+                            <select
+                                name="availability"
+                                value={formData.availability}
+                                onChange={handleChange}
                                 required
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
@@ -475,17 +460,17 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
                             </select>
                         </div>
                     </div>
-                    
+
                     <div className="flex gap-4 justify-end pt-4 border-t">
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={onClose}
                             className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                         >
                             Cancel
                         </button>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                         >
                             {editingDoctor ? 'Update' : 'Add'} Doctor

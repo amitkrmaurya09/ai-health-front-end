@@ -3,7 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const Login = () => {
-    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        role: 'patient' // 👈 default patient
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
@@ -28,12 +32,17 @@ const Login = () => {
         console.log('Submitting login with:', formData); // Debug log
 
         const result = await login(formData);
-        
+
         console.log('Login result:', result); // Debug log
-        
+
         if (result.success) {
-            navigate('/dashboard');
-        } else {
+            if (result.user.role === "doctor") {
+                navigate("/doctor-profile");
+            } else {
+                navigate("/dashboard");
+            }
+        }
+        else {
             setError(result.message || 'Login failed');
         }
         setLoading(false);
@@ -65,6 +74,33 @@ const Login = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+
+                    {/* 👇 ROLE SELECTOR (ONLY ONCE) */}
+                    <div className="flex gap-6 justify-center">
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="role"
+                                value="patient"
+                                checked={formData.role === 'patient'}
+                                onChange={handleChange}
+                            />
+                            Patient
+                        </label>
+
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="role"
+                                value="doctor"
+                                checked={formData.role === 'doctor'}
+                                onChange={handleChange}
+                            />
+                            Doctor
+                        </label>
+                    </div>
+
+                    {/* 👇 EMAIL & PASSWORD */}
                     {["email", "password"].map((field) => (
                         <div key={field} className="relative">
                             <input
@@ -75,11 +111,9 @@ const Login = () => {
                                 required
                                 className="peer w-full bg-transparent border-b-2 border-gray-300 outline-none py-2 focus:border-blue-600 transition"
                             />
-                            <label
-                                className="absolute left-0 top-2 text-gray-500 text-sm pointer-events-none transition-all 
-                                peer-focus:text-blue-600 peer-focus:-translate-y-4 peer-focus:text-xs 
-                                peer-valid:-translate-y-4 peer-valid:text-xs"
-                            >
+                            <label className="absolute left-0 top-2 text-gray-500 text-sm pointer-events-none transition-all 
+                peer-focus:text-blue-600 peer-focus:-translate-y-4 peer-focus:text-xs 
+                peer-valid:-translate-y-4 peer-valid:text-xs">
                                 {field.charAt(0).toUpperCase() + field.slice(1)}
                             </label>
                         </div>
@@ -96,8 +130,8 @@ const Login = () => {
 
                 <div className="text-center space-y-2">
                     <div>
-                        <Link 
-                            to="/forgot-password" 
+                        <Link
+                            to="/forgot-password"
                             className="text-blue-600 text-sm hover:underline"
                         >
                             Forgot your password?
