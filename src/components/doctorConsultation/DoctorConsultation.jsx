@@ -305,9 +305,66 @@ const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
 
     const specialties = ['General Physician', 'Cardiologist', 'Pediatrician', 'Neurologist', 'Orthopedic', 'Dermatologist'];
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSave(formData);
+
+        try {
+            const payload = {
+                name: formData.name,
+                email: formData.email,
+                password: "Doctor@123",
+                role: "doctor"
+            };
+
+            const registerRes = await fetch("http://localhost:5000/api/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const registerData = await registerRes.json();
+
+            if (!registerData.success) {
+                alert(registerData.message || "Doctor creation failed");
+                return;
+            }
+
+            const token = registerData.data.token;
+
+            const profileRes = await fetch("http://localhost:5000/api/doctor/update-profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    specialty: formData.specialty,
+                    experience: formData.experience,
+                    fees: formData.price,
+                    phone: formData.phone,
+                    location: formData.location,
+                    availability: formData.availability
+                })
+            });
+
+            const profileData = await profileRes.json();
+
+            if (profileData.success) {
+                onSave({
+                    ...profileData.data,
+                    userId: {
+                        name: formData.name,
+                        email: formData.email
+                    }
+                });
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Something went wrong");
+        }
     };
 
     const handleChange = (e) => {
