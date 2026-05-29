@@ -20,7 +20,7 @@ const Navigation = () => {
         { path: '/emergency-contacts', label: 'Emergency', icon: 'fas fa-ambulance' },
         { path: '/health-recommendations', label: 'Health Tips', icon: 'fas fa-apple-alt' },
         { path: '/report-analyzer', label: 'Reports', icon: 'fas fa-file-medical' },
-        { path: '/profile', label: 'Profile', icon: 'fas fa-user' }
+        // { path: '/profile', label: 'Profile', icon: 'fas fa-user' }
     ];
 
     // Don't show navigation while loading or if not authenticated
@@ -50,9 +50,12 @@ const Navigation = () => {
                             ))}
                         </ul>
                         <div className="user-menu">
-                            <div className="user-avatar">
-                                {user.name.charAt(0).toUpperCase()}
-                            </div>
+                                <Link to="/profile" className='user-avatar fas fa-user'>
+                                {console.log("got click")}
+                                {/* {user.name.charAt(0).toUpperCase()} */}
+                                {/* <i className='fas fa-user'></i> */}
+                                </Link>
+
                             <button className="btn btn-outline btn-sm" onClick={handleLogout}>
                                 <i className="fas fa-sign-out-alt"></i> Logout
                             </button>

@@ -46,7 +46,7 @@ const Register = () => {
         password: formData.password,
         role: formData.role // ✅ ADD THIS
       });
-
+      console.log(result)
       if (result.success) {
         setStatus({
           loading: false,
@@ -64,6 +64,7 @@ const Register = () => {
           });
         }, 1000);
       } else {
+        console.log("result",result)
         setStatus({
           loading: false,
           error: result.message || "Registration failed",

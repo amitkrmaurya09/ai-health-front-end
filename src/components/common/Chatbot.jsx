@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const Chatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -7,7 +9,7 @@ const Chatbot = () => {
     ]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    
+
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -47,7 +49,7 @@ const Chatbot = () => {
     return (
         <div className="fixed bottom-5 right-5 z-[9999] font-sans">
             {/* Toggle Button */}
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
                     w-14 h-14 rounded-full shadow-lg flex items-center justify-center 
@@ -61,7 +63,7 @@ const Chatbot = () => {
             {/* Chat Window */}
             {isOpen && (
                 <div className="absolute bottom-20 right-0 w-80 sm:w-96 h-[500px] max-h-[80vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 animate-fade-in-up">
-                    
+
                     {/* Header */}
                     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex justify-between items-center">
                         <div className="flex items-center gap-2">
@@ -69,22 +71,24 @@ const Chatbot = () => {
                             <h3 className="font-semibold">Health Assistant</h3>
                         </div>
                     </div>
-                    
+
                     {/* Messages Area */}
                     <div className="flex-1 p-4 overflow-y-auto bg-gray-50 space-y-4">
                         {messages.map((msg, index) => (
                             <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`
                                     max-w-[80%] p-3 rounded-2xl text-sm shadow-sm
-                                    ${msg.sender === 'user' 
-                                        ? 'bg-indigo-600 text-white rounded-br-none' 
+                                    ${msg.sender === 'user'
+                                        ? 'bg-indigo-600 text-white rounded-br-none'
                                         : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'}
                                 `}>
-                                    {msg.text}
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {msg.text}
+                                    </ReactMarkdown>
                                 </div>
                             </div>
                         ))}
-                        
+
                         {isLoading && (
                             <div className="flex justify-start">
                                 <div className="bg-white text-gray-500 p-3 rounded-2xl rounded-bl-none border border-gray-100 text-sm flex gap-1 items-center">
@@ -106,7 +110,7 @@ const Chatbot = () => {
                             placeholder="Ask about symptoms..."
                             className="flex-1 p-2 px-4 border border-gray-200 rounded-full focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm transition-all"
                         />
-                        <button 
+                        <button
                             type="submit"
                             disabled={!input.trim() || isLoading}
                             className="bg-indigo-600 text-white p-2 w-10 h-10 rounded-full flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
