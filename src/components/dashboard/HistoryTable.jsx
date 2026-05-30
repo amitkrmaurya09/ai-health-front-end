@@ -67,7 +67,7 @@ function HistoryRow({ day, isGoogle }) {
         </span>
       </td>
       <td className="py-3.5 px-2 text-slate-400">
-        {day.calories_burned ? `${day.calories_burned} kcal` : "—"}
+        {day.calories_burned ? `${formatNumber(Math.round(day.calories_burned))} kcal` : "—"}
       </td>
       <td className="py-3.5 px-2">
         <span className={goodSleep ? "text-indigo-400" : "text-slate-500"}>

@@ -144,6 +144,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateUser = (updates) => {
+        setUser((currentUser) => currentUser ? { ...currentUser, ...updates } : updates);
+    };
+
     const value = {
         user,
         loading,
@@ -151,7 +155,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         register, // Added register to value object
-        refreshToken
+        refreshToken,
+        updateUser
     };
 
     return (

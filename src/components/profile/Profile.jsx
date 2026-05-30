@@ -1,13 +1,20 @@
-import { FaEdit, FaCheck } from 'react-icons/fa';
+import { FaEdit, FaCheck, FaSignOutAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { useProfile } from './hooks/useProfile';
 import Notification from './components/Notification';
 import ProfileHeader from './components/ProfileHeader';
 import TabNavigation from './components/TabNavigation';
 import TabContent from './components/TabContent';
+import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
 
 const Profile = () => {
+  const { t } = useLanguage();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const {
     formData,
+    doctorData,
     profilePicture,
     isEditing,
     setIsEditing,
@@ -15,17 +22,21 @@ const Profile = () => {
     setActiveTab,
     notification,
     setNotification,
-    passwordData,
     fileInputRef,
     user,
+    predictionHistory,
+    isSaving,
     handleChange,
+    handleDoctorChange,
     handleSave,
-    handlePasswordChange,
-    handlePasswordUpdate,
     handleProfilePictureChange,
     handleRemoveProfilePicture,
-    handleDeleteAccount,
   } = useProfile();
+
+  const handleLogout = async () => {
+    navigate('/login');
+    await logout();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">
@@ -36,25 +47,41 @@ const Profile = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              My Profile
+              {t('profile.title')}
             </h1>
-            <p className="text-slate-600 mt-2">Manage your personal and medical information</p>
+            <p className="text-slate-600 mt-2">{t('profile.subtitle')}</p>
           </div>
-          <button
-            onClick={() => setIsEditing((prev) => !prev)}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${
-              isEditing
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleLogout}
+              className="px-5 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 bg-white text-red-600 border border-red-100 hover:bg-red-50 shadow-sm"
+            >
+              <FaSignOutAlt /> {t('nav.logout')}
+            </button>
+            <button
+              onClick={() => {
+                if (isEditing) {
+                  handleSave();
+                } else {
+                  setIsEditing(true);
+                }
+              }}
+              disabled={isSaving}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${isEditing
                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white'
                 : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
-            }`}
-          >
-            {isEditing ? <FaCheck /> : <FaEdit />}
-            {isEditing ? 'View Mode' : 'Edit Mode'}
-          </button>
+                }`}
+            >
+              {isEditing ? <FaCheck /> : <FaEdit />}
+              {isSaving ? t('profile.saving') : isEditing ? t('profile.save') : t('profile.edit')}
+            </button>
+          </div>
         </div>
 
         <ProfileHeader
           user={user}
+          formData={formData}
+          doctorData={doctorData}
           profilePicture={profilePicture}
           onPictureChange={handleProfilePictureChange}
           onRemovePicture={handleRemoveProfilePicture}
@@ -68,13 +95,13 @@ const Profile = () => {
             <TabContent
               activeTab={activeTab}
               formData={formData}
-              passwordData={passwordData}
+              doctorData={doctorData}
               onChange={handleChange}
-              onPasswordChange={handlePasswordChange}
+              onDoctorChange={handleDoctorChange}
               onSave={handleSave}
-              onPasswordUpdate={handlePasswordUpdate}
-              onDeleteAccount={handleDeleteAccount}
               isEditing={isEditing}
+              isSaving={isSaving}
+              predictionHistory={predictionHistory}
             />
           </div>
         </div>

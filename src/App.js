@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { ChatNotificationProvider } from './context/ChatNotificationContext';
 import Navigation from './components/common/Navigation';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './components/auth/Login';
@@ -27,71 +29,75 @@ const App = () => {
     console.log(apiUrl);
 
     return (
-        <AuthProvider>
-            <BrowserRouter>
-                <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                    <Navigation />
-                    <Routes>
-                        {/* Auth Routes */}
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/verify-email" element={<VerifyEmail />} />
-                        <Route path="/verify-otp" element={<VerifyOTP />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
+        <LanguageProvider>
+            <AuthProvider>
+                <BrowserRouter>
+                  <ChatNotificationProvider>
+                    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                        <Navigation />
+                        <Routes>
+                            {/* Auth Routes */}
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/verify-email" element={<VerifyEmail />} />
+                            <Route path="/verify-otp" element={<VerifyOTP />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
 
                         {/* --- THE DUPLICATE, PROTECTED ROUTE BELOW HAS BEEN REMOVED --- */}
                         {/* <Route path="/verify-otp" element={<ProtectedRoute><VerifyOTP /></ProtectedRoute>} /> */}
 
                         {/* Protected Routes */}
-                        <Route path="/dashboard" element={
-                            <ProtectedRoute>
-                                <Dashboard />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/doctor-profile" element={
-                            <ProtectedRoute>
-                                <DoctorProfile/>
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/symptom-checker" element={
-                            <ProtectedRoute>
-                                <SymptomChecker />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/doctor-consultation" element={
-                            <ProtectedRoute>
-                                <DoctorConsultation />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/emergency-contacts" element={
-                            <ProtectedRoute>
-                                <EmergencyContacts />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/health-recommendations" element={
-                            <ProtectedRoute>
-                                <HealthRecommendations />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/report-analyzer" element={
-                            <ProtectedRoute>
-                                <ReportAnalyzer />
-                            </ProtectedRoute>
-                        } />
-                        <Route path="/profile" element={
-                            <ProtectedRoute>
-                                <Profile />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/dashboard" element={
+                                <ProtectedRoute>
+                                    <Dashboard />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/doctor-profile" element={
+                                <ProtectedRoute>
+                                    <DoctorProfile/>
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/symptom-checker" element={
+                                <ProtectedRoute>
+                                    <SymptomChecker />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/doctor-consultation" element={
+                                <ProtectedRoute>
+                                    <DoctorConsultation />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/emergency-contacts" element={
+                                <ProtectedRoute>
+                                    <EmergencyContacts />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/health-recommendations" element={
+                                <ProtectedRoute>
+                                    <HealthRecommendations />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/report-analyzer" element={
+                                <ProtectedRoute>
+                                    <ReportAnalyzer />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/profile" element={
+                                <ProtectedRoute>
+                                    <Profile />
+                                </ProtectedRoute>
+                            } />
 
-                        {/* Default Route */}
-                        <Route path="/" element={<Login />} />
-                    </Routes>
-                    <Chatbot />
-                </div>
-            </BrowserRouter>
-        </AuthProvider>
+                            {/* Default Route */}
+                            <Route path="/" element={<Login />} />
+                        </Routes>
+                        <Chatbot />
+                    </div>
+                  </ChatNotificationProvider>
+                </BrowserRouter>
+            </AuthProvider>
+        </LanguageProvider>
     );
 };
 

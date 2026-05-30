@@ -24,7 +24,7 @@ class ApiService {
                 prom.resolve(token);
             }
         });
-        
+
         this.failedQueue = [];
     }
 
@@ -32,14 +32,14 @@ class ApiService {
     async handleResponse(response) {
         try {
             const data = await response.json();
-            
+
             console.log('API Response:', data); // Debug log
-            
+
             // Handle 401 Unauthorized - token expired
             if (response.status === 401) {
                 if (!this.isRefreshing) {
                     this.isRefreshing = true;
-                    
+
                     try {
                         // Try to refresh the token
                         const refreshResponse = await fetch(`${this.baseURL}/auth/refresh-token`, {
@@ -49,19 +49,19 @@ class ApiService {
                                 'Authorization': `Bearer ${localStorage.getItem('token')}`
                             }
                         });
-                        
+
                         const refreshData = await refreshResponse.json();
-                        
+
                         if (refreshData.success) {
                             localStorage.setItem('token', refreshData.data.token);
                             this.processQueue(null, refreshData.data.token);
-                            
+
                             // Retry the original request
                             const originalResponse = await fetch(response.url, {
                                 ...response,
                                 headers: this.getAuthHeaders()
                             });
-                            
+
                             return originalResponse.json();
                         } else {
                             // Refresh failed, clear token and process queue with error
@@ -83,12 +83,12 @@ class ApiService {
                     });
                 }
             }
-            
+
             if (!response.ok) {
                 // Handle other HTTP errors
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
             }
-            
+
             return data;
         } catch (error) {
             if (error instanceof SyntaxError) {
@@ -127,7 +127,7 @@ class ApiService {
                 body: JSON.stringify(data) // Just pass the whole data object
             }).then(this.handleResponse);
         },
-        
+
         resetPassword: (data) => {
             // FIX: The console.log is now inside the function, not a parameter to fetch.
             console.log("Resetting password with data:", data);
@@ -137,7 +137,7 @@ class ApiService {
                 body: JSON.stringify(data) // Just pass the whole data object
             }).then(this.handleResponse);
         },
-        
+
 
         refreshToken: (data) => fetch(`${this.baseURL}api/auth/refresh-token`, {
             method: 'POST',
@@ -186,7 +186,7 @@ class ApiService {
 
     // Predictions endpoints
     predictions = {
-        create: (data) => fetch(`${this.baseURL}/predictions`, {
+        create: (data) => fetch(`${this.baseURL}api/predictions`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
             body: JSON.stringify(data)
@@ -208,6 +208,95 @@ class ApiService {
         archive: (id) => fetch(`${this.baseURL}/predictions/${id}/archive`, {
             method: 'PATCH',
             headers: this.getAuthHeaders()
+        }).then(this.handleResponse)
+    };
+
+    consultations = {
+        create: (data) => fetch(`${this.baseURL}api/consultation/create`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify(data)
+        }).then(this.handleResponse),
+
+        getDoctorConsultations: () => fetch(`${this.baseURL}api/consultation/doctor`, {
+            headers: this.getAuthHeaders()
+        }).then(this.handleResponse),
+
+        getMyConsultations: () => fetch(`${this.baseURL}api/consultation/my`, {
+            headers: this.getAuthHeaders()
+        }).then(this.handleResponse)
+    };
+
+    doctors = {
+        getAll: () => fetch(`${this.baseURL}api/doctor/all`, {
+            headers: this.getAuthHeaders()
+        }).then(this.handleResponse),
+
+        getMe: () => fetch(`${this.baseURL}api/doctor/me`, {
+            headers: this.getAuthHeaders()
+        }).then(this.handleResponse),
+
+        saveService: (data) => fetch(`${this.baseURL}api/doctor/update-profile`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify(data)
+        }).then(this.handleResponse),
+
+        rate: (doctorId, data) => fetch(`${this.baseURL}api/doctor/${doctorId}/rate`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify(data)
+        }).then(this.handleResponse)
+    };
+
+    chat = {
+        getUnreadSummary: () => fetch(`${this.baseURL}api/chat/unread`, {
+            headers: this.getAuthHeaders()
+        }).then(this.handleResponse),
+
+        getMessages: (consultationId, limit = 50, skip = 0) => fetch(
+            `${this.baseURL}api/chat/consultation/${consultationId}/messages?limit=${limit}&skip=${skip}`,
+            { headers: this.getAuthHeaders() }
+        ).then(this.handleResponse),
+
+        sendMessage: (consultationId, messagePayload) => {
+            const formData = messagePayload instanceof FormData ? messagePayload : new FormData();
+
+            if (!(messagePayload instanceof FormData)) {
+                Object.entries(messagePayload).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        formData.append(key, value);
+                    }
+                });
+            }
+
+            return fetch(`${this.baseURL}api/chat/consultation/${consultationId}/message`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                },
+                body: formData
+            }).then(this.handleResponse);
+        },
+
+        markAsRead: (consultationId, messageId) => fetch(
+            `${this.baseURL}api/chat/consultation/${consultationId}/message/${messageId}/read`,
+            {
+                method: 'POST',
+                headers: this.getAuthHeaders()
+            }
+        ).then(this.handleResponse)
+    };
+
+    reports = {
+        getMine: () => fetch(`${this.baseURL}api/reports`, {
+            headers: this.getAuthHeaders()
+        }).then(this.handleResponse),
+
+        save: (data) => fetch(`${this.baseURL}api/reports`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify(data)
         }).then(this.handleResponse)
     };
 }

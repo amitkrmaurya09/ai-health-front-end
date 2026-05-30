@@ -1,81 +1,224 @@
 import { useState, useEffect, useRef } from 'react';
-import { getInitialProfile, saveProfileToStorage, clearProfileFromStorage } from '../utils/profileStorage';
+import { getInitialProfile, saveProfileToStorage } from '../utils/profileStorage';
+import api from '../../../services/api';
+import { useAuth } from '../../../hooks/useAuth';
+import { useLanguage } from '../../../hooks/useLanguage';
+
+const DEFAULT_PROFILE = {
+  name: 'John Doe',
+  email: 'john.doe@example.com',
+  role: 'patient',
+  languagePreference: 'en',
+  phone: '',
+  age: '',
+  gender: '',
+  bloodGroup: '',
+  allergies: '',
+  medications: '',
+  previousDiseases: '',
+  currentDisease: '',
+  sevenDayHeartRate: '',
+  bloodPressure: '',
+  medicines: '',
+  emergencyContact: '',
+  address: '',
+  occupation: '',
+  maritalStatus: '',
+};
+
+const optionalProfileFields = [
+  'avatar',
+  'phone',
+  'age',
+  'gender',
+  'bloodGroup',
+  'allergies',
+  'medications',
+  'previousDiseases',
+  'currentDisease',
+  'sevenDayHeartRate',
+  'bloodPressure',
+  'medicines',
+  'emergencyContact',
+  'occupation',
+  'address',
+  'maritalStatus',
+  'languagePreference',
+];
+
+const buildProfilePayload = (formData, profilePicture) => {
+  const payload = {
+    name: formData.name.trim(),
+    avatar: profilePicture,
+  };
+
+  optionalProfileFields.forEach((field) => {
+    if (field === 'avatar') return;
+
+    const value = field === 'avatar' ? profilePicture : formData[field];
+
+    if (field === 'age') {
+      payload.age = value === '' || value === null || value === undefined ? null : Number(value);
+      return;
+    }
+
+    payload[field] = value ?? '';
+  });
+
+  return payload;
+};
+
+const mapUserToProfile = (userData) => ({
+  name: userData.name || DEFAULT_PROFILE.name,
+  email: userData.email || DEFAULT_PROFILE.email,
+  role: userData.role || DEFAULT_PROFILE.role,
+  languagePreference: userData.languagePreference || DEFAULT_PROFILE.languagePreference,
+  phone: userData.phone || DEFAULT_PROFILE.phone,
+  age: userData.age ?? DEFAULT_PROFILE.age,
+  gender: userData.gender || DEFAULT_PROFILE.gender,
+  bloodGroup: userData.bloodGroup || DEFAULT_PROFILE.bloodGroup,
+  allergies: userData.allergies || DEFAULT_PROFILE.allergies,
+  medications: userData.medications || DEFAULT_PROFILE.medications,
+  previousDiseases: userData.previousDiseases || DEFAULT_PROFILE.previousDiseases,
+  currentDisease: userData.currentDisease || DEFAULT_PROFILE.currentDisease,
+  sevenDayHeartRate: userData.sevenDayHeartRate || DEFAULT_PROFILE.sevenDayHeartRate,
+  bloodPressure: userData.bloodPressure || DEFAULT_PROFILE.bloodPressure,
+  medicines: userData.medicines || DEFAULT_PROFILE.medicines,
+  emergencyContact: userData.emergencyContact || DEFAULT_PROFILE.emergencyContact,
+  occupation: userData.occupation || DEFAULT_PROFILE.occupation,
+  address: userData.address || DEFAULT_PROFILE.address,
+  maritalStatus: userData.maritalStatus || DEFAULT_PROFILE.maritalStatus,
+});
 
 export const useProfile = () => {
   const [formData, setFormData] = useState(getInitialProfile);
+  const [doctorData, setDoctorData] = useState({
+    specialty: '',
+    experience: '',
+    fees: '',
+    phone: '',
+    location: '',
+    availability: 'Available Today',
+  });
   const [profilePicture, setProfilePicture] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
   const [notification, setNotification] = useState(null);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const [predictionHistory, setPredictionHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
+  const { updateUser } = useAuth();
+  const { setLanguage } = useLanguage();
 
-  // Derived display user
-  const user = { name: formData.name, email: formData.email };
+  const user = { name: formData.name, email: formData.email, role: formData.role };
 
-  // Load profile picture on mount
   useEffect(() => {
-    const saved = localStorage.getItem('userProfile');
-    if (saved) {
-      const { profilePicture: pic } = JSON.parse(saved);
-      if (pic) setProfilePicture(pic);
-    }
+    const initialize = async () => {
+      try {
+        const profileResponse = await api.users.getProfile();
+        if (profileResponse.success && profileResponse.data?.user) {
+          const userData = profileResponse.data.user;
+          setFormData(mapUserToProfile(userData));
+          setLanguage(userData.languagePreference || DEFAULT_PROFILE.languagePreference);
+          if (profileResponse.data.doctorProfile) {
+            const doctorProfile = profileResponse.data.doctorProfile;
+            setDoctorData({
+              specialty: doctorProfile.specialty || '',
+              experience: doctorProfile.experience || '',
+              fees: doctorProfile.fees ?? '',
+              phone: doctorProfile.phone || '',
+              location: doctorProfile.location || '',
+              availability: doctorProfile.availability || 'Available Today',
+            });
+          }
+
+          if (userData.avatar) {
+            setProfilePicture(userData.avatar);
+          }
+        }
+      } catch (error) {
+        console.warn('Profile load failed, falling back to local data', error);
+      }
+
+      try {
+        const historyResponse = await api.predictions.getHistory();
+        if (historyResponse.success) {
+          setPredictionHistory(historyResponse.data.predictions || []);
+        }
+      } catch (error) {
+        console.warn('Prediction history load failed', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initialize();
   }, []);
 
-  // Auto-save on changes (skip defaults)
   useEffect(() => {
-    if (formData.name !== 'John Doe' || formData.email !== 'john.doe@example.com') {
+    if (formData.name !== DEFAULT_PROFILE.name || formData.email !== DEFAULT_PROFILE.email) {
       saveProfileToStorage(formData, profilePicture);
     }
   }, [formData, profilePicture]);
 
-  // --- Notifications ---
   const showNotification = (message, type) => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // --- Form handlers ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
     setFormData(updated);
-    saveProfileToStorage(updated, profilePicture);
-
-    if (name === 'name' || name === 'email') {
-      showNotification(`${name === 'name' ? 'Name' : 'Email'} updated!`, 'success');
+    if (name === 'languagePreference') {
+      setLanguage(value);
     }
   };
 
-  const handleSave = () => {
-    saveProfileToStorage(formData, profilePicture);
-    setIsEditing(false);
-    showNotification('Profile saved successfully!', 'success');
+  const handleDoctorChange = (e) => {
+    const { name, value } = e.target;
+    setDoctorData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // --- Password handlers ---
-  const handlePasswordChange = (e) => {
-    setPasswordData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const handleSave = async () => {
+    if (isSaving) return;
 
-  const handlePasswordUpdate = () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      showNotification('Passwords do not match!', 'error');
-      return;
+    try {
+      const payload = buildProfilePayload(formData, profilePicture);
+      setIsSaving(true);
+
+      const response = await api.users.updateProfile(payload);
+      if (response.success) {
+        if (response.data?.user?.role === 'doctor') {
+          await api.doctors.saveService(doctorData);
+        }
+
+        const updatedUser = response.data?.user;
+        const nextProfile = updatedUser ? mapUserToProfile(updatedUser) : { ...formData, ...payload };
+        setFormData((prev) => ({
+          ...prev,
+          ...nextProfile,
+        }));
+        setProfilePicture(updatedUser?.avatar ?? profilePicture);
+        saveProfileToStorage(nextProfile, updatedUser?.avatar ?? profilePicture);
+        if (updatedUser) {
+          updateUser(updatedUser);
+          setLanguage(updatedUser.languagePreference || payload.languagePreference || DEFAULT_PROFILE.languagePreference);
+        }
+        showNotification('Profile saved successfully!', 'success');
+        setIsEditing(false);
+      } else {
+        showNotification(response.message || 'Failed to save profile', 'error');
+      }
+    } catch (error) {
+      console.error('Profile save failed:', error);
+      showNotification('Failed to save profile. Please try again.', 'error');
+    } finally {
+      setIsSaving(false);
     }
-    localStorage.setItem(
-      'userPassword',
-      JSON.stringify({ hashedPassword: btoa(passwordData.newPassword), updatedAt: new Date().toISOString() })
-    );
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    showNotification('Password updated successfully!', 'success');
   };
 
-  // --- Profile picture handlers ---
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -87,9 +230,7 @@ export const useProfile = () => {
     reader.onloadend = () => {
       const result = reader.result;
       setProfilePicture(result);
-      const updated = { ...formData, profilePicture: result };
-      setFormData(updated);
-      saveProfileToStorage(updated, result);
+      setFormData((prev) => ({ ...prev, profilePicture: result }));
       showNotification('Profile picture updated!', 'success');
     };
     reader.readAsDataURL(file);
@@ -97,25 +238,14 @@ export const useProfile = () => {
 
   const handleRemoveProfilePicture = () => {
     setProfilePicture(null);
-    const updated = { ...formData, profilePicture: null };
-    setFormData(updated);
+    setFormData((prev) => ({ ...prev, profilePicture: null }));
     if (fileInputRef.current) fileInputRef.current.value = '';
-    saveProfileToStorage(updated, null);
     showNotification('Profile picture removed!', 'success');
   };
 
-  // --- Account deletion ---
-  const handleDeleteAccount = () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      clearProfileFromStorage();
-      showNotification('Account deleted successfully!', 'success');
-      setTimeout(() => window.location.reload(), 2000);
-    }
-  };
-
   return {
-    // State
     formData,
+    doctorData,
     profilePicture,
     isEditing,
     setIsEditing,
@@ -123,16 +253,15 @@ export const useProfile = () => {
     setActiveTab,
     notification,
     setNotification,
-    passwordData,
     fileInputRef,
     user,
-    // Handlers
+    predictionHistory,
+    loading,
+    isSaving,
     handleChange,
+    handleDoctorChange,
     handleSave,
-    handlePasswordChange,
-    handlePasswordUpdate,
     handleProfilePictureChange,
     handleRemoveProfilePicture,
-    handleDeleteAccount,
   };
 };

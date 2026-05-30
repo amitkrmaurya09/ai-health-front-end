@@ -20,18 +20,18 @@ const METRIC_CARDS = [
     accent: "blue",
   },
   {
+    key: "distance_km",
+    label: "Walk",
+    unit: "km",
+    icon: <Wind size={18} />,
+    accent: "emerald",
+  },
+  {
     key: "calories_burned",
     label: "Calories",
     unit: "kcal",
     icon: <Flame size={18} />,
     accent: "orange",
-  },
-  {
-    key: "active_minutes",
-    label: "Active",
-    unit: "min",
-    icon: <Wind size={18} />,
-    accent: "cyan",
   },
   {
     key: "sleep_hours",
@@ -57,6 +57,7 @@ export default function Dashboard() {
     saveManualEntry,
     fetchGoogleData,
     connectGoogle,
+    logoutGoogle,
   } = useHealthData();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -91,6 +92,7 @@ export default function Dashboard() {
           onAddEntry={() => setModalOpen(true)}
           onRefresh={fetchGoogleData}
           onConnect={connectGoogle}
+          onLogout={logoutGoogle}
         />
 
         {/* Sync error banner */}

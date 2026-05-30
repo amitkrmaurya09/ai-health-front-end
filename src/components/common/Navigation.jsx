@@ -1,27 +1,36 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
+import { useChatNotifications } from '../../hooks/useChatNotifications';
 
 const Navigation = () => {
-    const { user, loading, tokenVerified, logout } = useAuth(); // Added logout here
+    const { user, loading, tokenVerified } = useAuth();
+    const { t } = useLanguage();
+    const { totalUnread, conversations } = useChatNotifications();
     const location = useLocation();
     const navigate = useNavigate();
 
-    const handleLogout = async () => {
-        navigate('/login'); // Navigate immediately for better UX
-        // Then logout (will clear data)
-        await logout(); // Added await and fixed function call
+    const handleNotificationClick = () => {
+        const consultationId = conversations[0]?.consultation?._id;
+        navigate(consultationId ? `/doctor-consultation?consultation=${consultationId}` : '/doctor-consultation');
     };
 
-    const navItems = [
-        { path: '/dashboard', label: 'Dashboard', icon: 'fas fa-home' },
-        { path: '/symptom-checker', label: 'Symptom Checker', icon: 'fas fa-stethoscope' },
-        { path: '/doctor-consultation', label: 'Doctors', icon: 'fas fa-user-md' },
-        { path: '/emergency-contacts', label: 'Emergency', icon: 'fas fa-ambulance' },
-        { path: '/health-recommendations', label: 'Health Tips', icon: 'fas fa-apple-alt' },
-        { path: '/report-analyzer', label: 'Reports', icon: 'fas fa-file-medical' },
-        // { path: '/profile', label: 'Profile', icon: 'fas fa-user' }
+    const patientNavItems = [
+        { path: '/dashboard', label: t('nav.dashboard'), icon: 'fas fa-home' },
+        { path: '/symptom-checker', label: t('nav.symptoms'), icon: 'fas fa-stethoscope' },
+        { path: '/doctor-consultation', label: t('nav.doctors'), icon: 'fas fa-user-md' },
+        { path: '/emergency-contacts', label: t('nav.emergency'), icon: 'fas fa-ambulance' },
+        { path: '/health-recommendations', label: t('nav.healthTips'), icon: 'fas fa-apple-alt' },
+        { path: '/report-analyzer', label: t('nav.reports'), icon: 'fas fa-file-medical' },
     ];
+
+    const doctorNavItems = [
+        { path: '/doctor-profile', label: t('nav.myService'), icon: 'fas fa-briefcase-medical' },
+        { path: '/doctor-consultation', label: t('nav.doctorDirectory'), icon: 'fas fa-user-md' },
+    ];
+
+    const navItems = user?.role === 'doctor' ? doctorNavItems : patientNavItems;
 
     // Don't show navigation while loading or if not authenticated
     if (loading || !tokenVerified || !user) {
@@ -50,15 +59,24 @@ const Navigation = () => {
                             ))}
                         </ul>
                         <div className="user-menu">
+                            <button
+                                type="button"
+                                className="notification-bell"
+                                onClick={handleNotificationClick}
+                                aria-label={`${totalUnread} unread chat messages`}
+                                title="Chat notifications"
+                            >
+                                <i className="fas fa-bell"></i>
+                                {totalUnread > 0 && (
+                                    <span className="notification-badge">
+                                        {totalUnread > 99 ? '99+' : totalUnread}
+                                    </span>
+                                )}
+                            </button>
                                 <Link to="/profile" className='user-avatar fas fa-user'>
-                                {console.log("got click")}
                                 {/* {user.name.charAt(0).toUpperCase()} */}
                                 {/* <i className='fas fa-user'></i> */}
                                 </Link>
-
-                            <button className="btn btn-outline btn-sm" onClick={handleLogout}>
-                                <i className="fas fa-sign-out-alt"></i> Logout
-                            </button>
                         </div>
                     </>
                 </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '../hooks/useAuth';
+import api from '../services/api';
+import DoctorChatWindow from '../components/doctorConsultation/DoctorChatWindow';
 
 const DoctorProfile = () => {
     const { user } = useAuth();
@@ -18,17 +20,20 @@ const DoctorProfile = () => {
         message: "",
         error: ""
     });
+    const [consultations, setConsultations] = useState([]);
+    const [activeConsultation, setActiveConsultation] = useState(null);
+    const [chatError, setChatError] = useState("");
+    const [serviceExists, setServiceExists] = useState(false);
 
     // ✅ existing data load (EDIT case)
     useEffect(() => {
-        fetch("/api/doctor/me", {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-            .then(res => res.json())
-            .then(data => {
+        const loadService = async () => {
+            if (!user || user.role !== "doctor") return;
+
+            try {
+                const data = await api.doctors.getMe();
                 if (data.success && data.data) {
+                    setServiceExists(Boolean(data.data.specialty));
                     setFormData({
                         specialty: data.data.specialty || "",
                         experience: data.data.experience || "",
@@ -38,8 +43,33 @@ const DoctorProfile = () => {
                         availability: data.data.availability || "Available Today"
                     });
                 }
-            });
-    }, []);
+            } catch (error) {
+                setStatus((prev) => ({
+                    ...prev,
+                    error: error.message || "Unable to load doctor service"
+                }));
+            }
+        };
+
+        loadService();
+    }, [user]);
+
+    useEffect(() => {
+        const loadConsultations = async () => {
+            if (!user || user.role !== "doctor") return;
+
+            try {
+                const response = await api.consultations.getMyConsultations();
+                if (response.success) {
+                    setConsultations(response.data || []);
+                }
+            } catch (error) {
+                setChatError(error.message || "Unable to load conversations");
+            }
+        };
+
+        loadConsultations();
+    }, [user]);
 
     const handleChange = (e) => {
         setFormData({
@@ -54,21 +84,13 @@ const DoctorProfile = () => {
         setStatus({ loading: true, message: "", error: "" });
 
         try {
-            const res = await fetch("http://localhost:5000/api/doctor/update-profile", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await res.json();
+            const data = await api.doctors.saveService(formData);
 
             if (data.success) {
+                setServiceExists(true);
                 setStatus({
                     loading: false,
-                    message: "Profile updated successfully ✅",
+                    message: serviceExists ? "Service updated successfully" : "Service created successfully",
                     error: ""
                 });
             } else {
@@ -93,12 +115,16 @@ const DoctorProfile = () => {
     }
 
     return (
-        <div className="min-h-screen flex justify-center items-center bg-gray-100 px-4">
-            <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
+        <div className="min-h-screen bg-gray-100 px-4 py-8">
+            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-8 rounded-xl shadow-lg w-full">
 
-                <h2 className="text-2xl font-semibold text-center mb-6">
-                    Complete Doctor Profile
+                <h2 className="text-2xl font-semibold text-center mb-2">
+                    {serviceExists ? "Edit Your Service" : "Create Your Service"}
                 </h2>
+                <p className="text-sm text-gray-500 text-center mb-6">
+                    Each doctor can publish one service card. Patients control ratings.
+                </p>
 
                 {status.message && (
                     <div className="bg-green-100 text-green-700 p-2 rounded mb-4 text-sm">
@@ -181,11 +207,54 @@ const DoctorProfile = () => {
                         disabled={status.loading}
                         className="w-full bg-blue-600 text-white py-2 rounded"
                     >
-                        {status.loading ? "Saving..." : "Save Profile"}
+                        {status.loading ? "Saving..." : serviceExists ? "Update Service" : "Create Service"}
                     </button>
 
                 </form>
             </div>
+
+            <div className="bg-white p-8 rounded-xl shadow-lg w-full">
+                <h2 className="text-2xl font-semibold mb-2">Patient Chats</h2>
+                <p className="text-sm text-gray-500 mb-4">Messages are stored while you are offline and appear here when you return.</p>
+
+                {chatError && (
+                    <div className="bg-red-100 text-red-700 p-2 rounded mb-4 text-sm">
+                        {chatError}
+                    </div>
+                )}
+
+                <div className="space-y-3">
+                    {consultations.length === 0 ? (
+                        <p className="text-sm text-gray-500">No patient conversations yet.</p>
+                    ) : (
+                        consultations.map((consultation) => (
+                            <button
+                                key={consultation._id}
+                                onClick={() => setActiveConsultation(consultation)}
+                                className={`w-full text-left border rounded-lg p-4 transition ${
+                                    activeConsultation?._id === consultation._id
+                                        ? "border-indigo-500 bg-indigo-50"
+                                        : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
+                                }`}
+                            >
+                                <div className="font-semibold text-gray-900">
+                                    {consultation.patientId?.name || "Patient"}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Open conversation</div>
+                            </button>
+                        ))
+                    )}
+                </div>
+            </div>
+            </div>
+
+            {activeConsultation && (
+                <DoctorChatWindow
+                    consultation={activeConsultation}
+                    currentUser={user}
+                    onClose={() => setActiveConsultation(null)}
+                />
+            )}
         </div>
     );
 };

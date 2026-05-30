@@ -5,6 +5,7 @@ import {
   sortByDate,
   upsertByDate,
   generateInsights,
+  normalizeHealthEntry,
 } from "../utils";
 
 /**
@@ -46,7 +47,9 @@ export function useHealthData() {
   // ── Initialization ──────────────────────────────────────────────────────────
   useEffect(() => {
     const savedSource = storage.get(STORAGE_KEYS.ACTIVE_SOURCE, DATA_SOURCES.MANUAL);
-    const savedManual = storage.get(STORAGE_KEYS.MANUAL_DATA, []);
+    const savedManual = storage
+      .get(STORAGE_KEYS.MANUAL_DATA, [])
+      .map(normalizeHealthEntry);
     const savedProfile = storage.get(STORAGE_KEYS.USER_PROFILE, null);
 
     setActiveSource(savedSource);
@@ -82,7 +85,7 @@ export function useHealthData() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      setGoogleData(data.formattedData ?? []);
+      setGoogleData((data.formattedData ?? []).map(normalizeHealthEntry));
 
       if (data.profilePhoto || data.userName) {
         setUserData((prev) => ({
@@ -105,9 +108,30 @@ export function useHealthData() {
     window.location.href = `${BACKEND_URL}/auth/google`;
   }, []);
 
+  const logoutGoogle = useCallback(async () => {
+    setSyncError(null);
+    setSyncing(true);
+    try {
+      await fetch(`${BACKEND_URL}/auth/logout`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Google Fit logout failed:', error);
+    } finally {
+      setSyncing(false);
+      setActiveSource(DATA_SOURCES.MANUAL);
+      setGoogleData([]);
+      storage.set(STORAGE_KEYS.ACTIVE_SOURCE, DATA_SOURCES.MANUAL);
+    }
+  }, []);
+
   // ── Manual entries ──────────────────────────────────────────────────────────
   const saveManualEntry = useCallback((formData) => {
-    const entry = { ...formData, source: DATA_SOURCES.MANUAL };
+    const entry = normalizeHealthEntry({
+      ...formData,
+      source: DATA_SOURCES.MANUAL,
+    });
 
     setManualData((prev) => {
       const updated = upsertByDate(prev, entry);
@@ -151,5 +175,6 @@ export function useHealthData() {
     saveManualEntry,
     fetchGoogleData,
     connectGoogle,
+    logoutGoogle,
   };
 }

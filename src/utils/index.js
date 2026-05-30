@@ -1,4 +1,4 @@
-import { THRESHOLDS, STORAGE_KEYS } from "../constants";
+import { THRESHOLDS } from "../constants";
 
 // ─── Storage Helpers ─────────────────────────────────────────────────────────
 
@@ -47,6 +47,31 @@ export const formatBloodPressure = (bp) => {
 /** Format a number to locale string, with a fallback */
 export const formatNumber = (val, fallback = "--") =>
   val != null && !isNaN(val) ? Number(val).toLocaleString() : fallback;
+
+/** Format a number as a whole number, with a fallback */
+export const formatInteger = (val, fallback = "--") =>
+  val != null && !isNaN(val) ? Math.round(Number(val)).toLocaleString() : fallback;
+
+/** Keep dashboard metrics consistent across manual, cached, and Google data */
+export const normalizeHealthEntry = (entry = {}) => ({
+  ...entry,
+  step_count:
+    entry.step_count != null && entry.step_count !== ""
+      ? Math.round(Number(entry.step_count))
+      : entry.step_count,
+  calories_burned:
+    entry.calories_burned != null && entry.calories_burned !== ""
+      ? Math.round(Number(entry.calories_burned))
+      : entry.calories_burned,
+  active_minutes:
+    entry.active_minutes != null && entry.active_minutes !== ""
+      ? Math.round(Number(entry.active_minutes))
+      : entry.active_minutes,
+  heart_rate:
+    entry.heart_rate != null && entry.heart_rate !== ""
+      ? Math.round(Number(entry.heart_rate))
+      : entry.heart_rate,
+});
 
 /** Format a date string to a short label (e.g. "Jun 5") */
 export const formatDateShort = (dateStr) => {

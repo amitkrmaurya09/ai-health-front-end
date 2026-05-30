@@ -1,38 +1,75 @@
 
-import React, { useState, useEffect } from 'react';
-import { FaUserMd, FaStar, FaCalendarAlt, FaEdit, FaTrash, FaPlus, FaSearch, FaTimes, FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FaUserMd, FaPlus, FaSearch, FaTimes, FaCommentDots, FaStar } from 'react-icons/fa';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useChatNotifications } from '../../hooks/useChatNotifications';
+import api from '../../services/api';
+import DoctorChatWindow from './DoctorChatWindow';
+
+const getId = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return value._id || value.id || '';
+};
 
 const DoctorConsultation = () => {
     const [doctors, setDoctors] = useState([]);
-    const [showModal, setShowModal] = useState(false);
-    const [editingDoctor, setEditingDoctor] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterSpecialty, setFilterSpecialty] = useState('all');
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
     const [notification, setNotification] = useState(null);
+    const [activeConsultation, setActiveConsultation] = useState(null);
+    const [consultationsByDoctor, setConsultationsByDoctor] = useState({});
+    const [myConsultations, setMyConsultations] = useState([]);
+    const { user } = useAuth();
+    const { unreadByConsultation, refreshUnread } = useChatNotifications();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
-    useEffect(() => {
-        fetch('http://localhost:5000/api/doctor/all')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    setDoctors(data.data);
-                }
-            })
-            .catch(() => {
-                showNotification('Failed to load doctors', 'error');
-            });
+    const showNotification = useCallback((message, type) => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 3000);
     }, []);
 
-    // useEffect(() => {
-    //     if (doctors.length > 0) {
-    //         localStorage.setItem('doctors', JSON.stringify(doctors));
-    //     }
-    // }, [doctors]);
+    const loadDoctors = useCallback(async () => {
+        try {
+            const data = await api.doctors.getAll();
+            if (data.success) setDoctors(data.data || []);
+        } catch {
+            showNotification('Failed to load doctors', 'error');
+        }
+    }, [showNotification]);
+
+    useEffect(() => {
+        loadDoctors();
+    }, [loadDoctors]);
+
+    const loadMyConsultations = useCallback(async () => {
+        try {
+            const response = await api.consultations.getMyConsultations();
+            if (response.success) {
+                const consultations = response.data || [];
+                setMyConsultations(consultations);
+                setConsultationsByDoctor((prev) => {
+                    const next = { ...prev };
+                    consultations.forEach((consultation) => {
+                        const doctorUserId = getId(consultation.doctorId);
+                        const doctorService = doctors.find((doctor) => getId(doctor.userId) === doctorUserId);
+                        if (doctorService) next[doctorService._id] = { consultation };
+                    });
+                    return next;
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load consultations:', error);
+        }
+    }, [doctors]);
+
+    useEffect(() => {
+        if (user) loadMyConsultations();
+    }, [user, loadMyConsultations]);
 
     const specialties = ['all', 'General Physician', 'Cardiologist', 'Pediatrician', 'Neurologist', 'Orthopedic', 'Dermatologist'];
-
     const filteredDoctors = doctors.filter(doctor => {
         const matchesSearch =
             doctor.userId?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
@@ -82,27 +119,80 @@ const DoctorConsultation = () => {
         }
     };
 
-    const handleEditDoctor = (doctor) => {
-        setEditingDoctor(doctor);
-        setShowModal(true);
+    const handleOpenChat = async (doctor) => {
+        try {
+            const doctorUserId = doctor.userId?._id || doctor.userId;
+            if (!doctorUserId) {
+                showNotification('Doctor information unavailable', 'error');
+                return;
+            }
+
+            const existingConsultation = consultationsByDoctor[doctor._id];
+            let consultation = existingConsultation?.consultation;
+
+            if (!consultation) {
+                const response = await api.consultations.create({ doctorId: doctorUserId, symptoms: ['Chat session opened'], aiDiagnosis: '', urgencyLevel: 'Low' });
+                if (!response.success) {
+                    showNotification('Unable to start consultation', 'error');
+                    return;
+                }
+                consultation = response.data?.data || response.data;
+                setConsultationsByDoctor((prev) => ({
+                    ...prev,
+                    [doctor._id]: { consultation },
+                }));
+                setMyConsultations((prev) => (
+                    prev.some((item) => getId(item) === getId(consultation))
+                        ? prev
+                        : [consultation, ...prev]
+                ));
+            }
+
+            setActiveConsultation(consultation);
+            refreshUnread();
+        } catch (error) {
+            console.error(error);
+            showNotification('Failed to open chat', 'error');
+        }
     };
 
-    const handleDeleteDoctor = (doctorId) => {
-        setShowDeleteConfirm(doctorId);
+    const handleOpenConsultation = useCallback((consultation) => {
+        setActiveConsultation(consultation);
+    }, []);
+
+    const handleMessagesRead = useCallback(() => {
+        refreshUnread();
+        loadMyConsultations();
+    }, [refreshUnread, loadMyConsultations]);
+
+    useEffect(() => {
+        const requestedConsultationId = searchParams.get('consultation');
+        if (!requestedConsultationId || myConsultations.length === 0) return;
+
+        const consultation = myConsultations.find((item) => getId(item) === requestedConsultationId);
+        if (consultation) handleOpenConsultation(consultation);
+    }, [searchParams, myConsultations, handleOpenConsultation]);
+
+    const handleCloseChat = () => {
+        setActiveConsultation(null);
     };
 
-    const confirmDelete = (doctorId) => {
-        setDoctors(doctors.filter(d => d.id !== doctorId));
-        setShowDeleteConfirm(null);
-        showNotification('Doctor deleted successfully!', 'error');
-    };
+    const handleRateDoctor = async (doctor, rating) => {
+        if (user?.role !== 'patient') {
+            showNotification('Only patients can rate doctors', 'error');
+            return;
+        }
 
-    const showNotification = (message, type) => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
+        try {
+            const response = await api.doctors.rate(doctor._id, { rating });
+            if (response.success) {
+                setDoctors((prev) => prev.map((item) => item._id === doctor._id ? response.data : item));
+                showNotification('Thanks for rating this doctor', 'success');
+            }
+        } catch (error) {
+            showNotification(error.message || 'Unable to save rating', 'error');
+        }
     };
-    const { user } = useAuth();
-    const aiData = JSON.parse(localStorage.getItem('aiResult') || '{}');
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -128,12 +218,14 @@ const DoctorConsultation = () => {
                             </h1>
                             <p className="text-gray-600 mt-1">Find and book appointments with qualified doctors</p>
                         </div>
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                        >
-                            <FaPlus /> Add Doctor
-                        </button>
+                        {user?.role === 'doctor' && (
+                            <button
+                                onClick={() => navigate('/doctor-profile')}
+                                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                                <FaPlus /> Manage My Service
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -164,6 +256,13 @@ const DoctorConsultation = () => {
                     </div>
                 </div>
 
+                <ChatInbox
+                    consultations={myConsultations}
+                    currentUser={user}
+                    unreadByConsultation={unreadByConsultation}
+                    onOpen={handleOpenConsultation}
+                />
+
                 {/* Doctors Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDoctors.length === 0 ? (
@@ -173,64 +272,92 @@ const DoctorConsultation = () => {
                             <p className="text-gray-500">Try adjusting your search or filters</p>
                         </div>
                     ) : (
-                        filteredDoctors.map(doctor => (
-                            <DoctorCard
-                                key={doctor._id}
-                                doctor={doctor}
-                                onBook={() => handleBookAppointment(doctor)}
-                                onEdit={() => handleEditDoctor(doctor)}
-                                onDelete={() => handleDeleteDoctor(doctor._id)}
-                            />
-                        ))
+                        filteredDoctors.map(doctor => {
+                            const consultation = myConsultations.find(
+                                (item) => getId(item.doctorId) === getId(doctor.userId)
+                            );
+                            const unreadCount = unreadByConsultation[getId(consultation)] || 0;
+
+                            return (
+                                <DoctorCard
+                                    key={doctor._id}
+                                    doctor={doctor}
+                                    currentUser={user}
+                                    unreadCount={unreadCount}
+                                    onBook={() => handleBookAppointment(doctor)}
+                                    onChat={() => handleOpenChat(doctor)}
+                                    onRate={(rating) => handleRateDoctor(doctor, rating)}
+                                    onManage={() => navigate('/doctor-profile')}
+                                />
+                            );
+                        })
                     )}
                 </div>
+
+                {activeConsultation && (
+                    <DoctorChatWindow
+                        consultation={activeConsultation}
+                        currentUser={user}
+                        onClose={handleCloseChat}
+                        onMessagesRead={handleMessagesRead}
+                    />
+                )}
             </div>
 
-            {/* Registration/Edit Modal - Extended Column Layout */}
-            {showModal && (
-                <DoctorRegistrationModal
-                    onClose={() => {
-                        setShowModal(false);
-                        setEditingDoctor(null);
-                    }}
-                    onSave={(doctorData) => {
-                        if (editingDoctor) {
-                            setDoctors(doctors.map(d => d._id === editingDoctor._id ? { ...doctorData, _id: editingDoctor._id } : d));
-                            showNotification('Doctor updated successfully!', 'success');
-                        } else {
-                            setDoctors([...doctors, { ...doctorData, id: Date.now() }]);
-                            showNotification('Doctor added successfully!', 'success');
-                        }
-                        setShowModal(false);
-                        setEditingDoctor(null);
-                    }}
-                    editingDoctor={editingDoctor}
-                />
-            )}
+        </div>
+    );
+};
 
-            {/* Delete Confirmation */}
-            {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
-                    <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Delete</h3>
-                        <p className="text-gray-600 mb-4">Are you sure you want to delete this doctor?</p>
-                        <div className="flex gap-3 justify-end">
-                            <button
-                                onClick={() => setShowDeleteConfirm(null)}
-                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => confirmDelete(showDeleteConfirm)}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+const getOtherPerson = (consultation, currentUser) => {
+    const currentUserId = getId(currentUser);
+    const doctorId = getId(consultation.doctorId);
+    return currentUserId === doctorId ? consultation.patientId : consultation.doctorId;
+};
+
+const formatInboxTime = (dateValue) => {
+    if (!dateValue) return '';
+    return new Date(dateValue).toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+const ChatInbox = ({ consultations, currentUser, unreadByConsultation, onOpen }) => {
+    if (!consultations.length) return null;
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <FaCommentDots className="text-green-600" />
+                    Chat Inbox
+                </h2>
+                <span className="text-xs text-gray-500">Open a chat to reply</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {consultations.map((consultation) => {
+                    const otherPerson = getOtherPerson(consultation, currentUser);
+                    const unreadCount = unreadByConsultation[getId(consultation)] || 0;
+                    const name = otherPerson?.name || (currentUser?.role === 'doctor' ? 'Patient' : 'Doctor');
+
+                    return (
+                        <button
+                            key={getId(consultation)}
+                            onClick={() => onOpen(consultation)}
+                            className="text-left border border-gray-100 rounded-xl p-4 hover:border-green-200 hover:bg-green-50/40 transition flex items-center justify-between gap-3"
+                        >
+                            <div className="min-w-0">
+                                <p className="font-semibold text-gray-900 truncate">{name}</p>
+                                <p className="text-xs text-gray-500">
+                                    {formatInboxTime(consultation.updatedAt)} · Tap to chat
+                                </p>
+                            </div>
+                            {unreadCount > 0 && (
+                                <span className="min-w-6 h-6 px-2 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 };
@@ -246,7 +373,12 @@ const loadRazorpay = () => {
 };
 
 
-const DoctorCard = ({ doctor, onBook }) => {
+const DoctorCard = ({ doctor, currentUser, unreadCount = 0, onBook, onChat, onRate, onManage }) => {
+    const isPatient = currentUser?.role === 'patient';
+    const isOwnService = currentUser?.role === 'doctor' && getId(doctor.userId) === getId(currentUser);
+    const rating = doctor.rating || 0;
+    const userRating = doctor.ratings?.find((item) => getId(item.patientId) === getId(currentUser))?.value;
+
     return (
         <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-5 flex flex-col gap-3">
 
@@ -270,213 +402,62 @@ const DoctorCard = ({ doctor, onBook }) => {
             <div className="text-sm text-gray-600 space-y-1">
                 <p>🧠 Experience: {doctor.experience} yrs</p>
                 <p>📍 {doctor.location}</p>
-                <p>⭐ Rating: {doctor.rating || 4.5}</p>
+                <p>⭐ Rating: {rating ? rating.toFixed(1) : 'No ratings yet'} {doctor.ratingCount ? `(${doctor.ratingCount})` : ''}</p>
             </div>
 
+            {isPatient && (
+                <div className="flex items-center gap-1 border-t border-gray-100 pt-3">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                        <button
+                            key={value}
+                            onClick={() => onRate(value)}
+                            className={`transition ${value <= (userRating || 0) ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}`}
+                            aria-label={`Rate ${value} stars`}
+                        >
+                            <FaStar />
+                        </button>
+                    ))}
+                    <span className="text-xs text-gray-500 ml-2">
+                        {userRating ? 'Your rating' : 'Rate'}
+                    </span>
+                </div>
+            )}
+
             {/* Bottom Section */}
-            <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
                 <span className="text-blue-600 font-bold text-lg">
                     ₹{doctor.fees}
                 </span>
 
-                <button
-                    onClick={onBook}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200"
-                >
-                    Book Now
-                </button>
-            </div>
-        </div>
-    );
-};
-
-const DoctorRegistrationModal = ({ onClose, onSave, editingDoctor }) => {
-    const [formData, setFormData] = useState({
-        name: editingDoctor?.name || '',
-        specialty: editingDoctor?.specialty || 'General Physician',
-        rating: editingDoctor?.rating || '4.5',
-        experience: editingDoctor?.experience || '5 years',
-        availability: editingDoctor?.availability || 'Available Today',
-        price: editingDoctor?.price || '50',
-        phone: editingDoctor?.phone || '',
-        email: editingDoctor?.email || '',
-        location: editingDoctor?.location || ''
-    });
-
-    const specialties = ['General Physician', 'Cardiologist', 'Pediatrician', 'Neurologist', 'Orthopedic', 'Dermatologist'];
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSave(formData);
-    };
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    return (
-        // Updated modal container with proper margins
-        <div className="fixed inset-x-0 top-[50px] bottom-[50px] bg-black/50 flex items-start justify-center z-40 pt-8 pb-8 overflow-y-auto">
-            <div className="bg-white rounded-xl w-full max-w-4xl my-auto">
-                <div className="flex items-center justify-between p-6 border-b">
-                    <h2 className="text-xl font-semibold text-gray-900">
-                        {editingDoctor ? 'Edit Doctor' : 'Add New Doctor'}
-                    </h2>
+                {isPatient && (
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={onBook}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200"
+                        >
+                            Book Now
+                        </button>
+                        <button
+                            onClick={() => onChat(doctor)}
+                            className="relative bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2"
+                        >
+                            <FaCommentDots /> Chat
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-green-400 border-2 border-white text-[10px] font-bold flex items-center justify-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                )}
+                {isOwnService && (
                     <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors text-xl"
+                        onClick={onManage}
+                        className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm transition-all duration-200"
                     >
-                        <FaTimes />
+                        Edit Service
                     </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6">
-                    {/* Extended 3-Column Grid Layout */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="Dr. John Doe"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Specialty *</label>
-                            <select
-                                name="specialty"
-                                value={formData.specialty}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                {specialties.map(spec => (
-                                    <option key={spec} value={spec}>{spec}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Rating (0-5) *</label>
-                            <input
-                                type="number"
-                                name="rating"
-                                value={formData.rating}
-                                onChange={handleChange}
-                                min="0"
-                                max="5"
-                                step="0.1"
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="4.5"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Experience *</label>
-                            <input
-                                type="text"
-                                name="experience"
-                                value={formData.experience}
-                                onChange={handleChange}
-                                placeholder="e.g., 10 years"
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
-                            <input
-                                type="number"
-                                name="price"
-                                value={formData.price}
-                                onChange={handleChange}
-                                min="0"
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="50"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
-                            <input
-                                type="tel"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="+1 234-567-8900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="doctor@hospital.com"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
-                            <input
-                                type="text"
-                                name="location"
-                                value={formData.location}
-                                onChange={handleChange}
-                                placeholder="e.g., New York, NY"
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Availability *</label>
-                            <select
-                                name="availability"
-                                value={formData.availability}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="Available Today">Available Today</option>
-                                <option value="Tomorrow">Tomorrow</option>
-                                <option value="This Week">This Week</option>
-                                <option value="Next Week">Next Week</option>
-                                <option value="Not Available">Not Available</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4 justify-end pt-4 border-t">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                        >
-                            {editingDoctor ? 'Update' : 'Add'} Doctor
-                        </button>
-                    </div>
-                </form>
+                )}
             </div>
         </div>
     );

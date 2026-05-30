@@ -127,6 +127,45 @@ nav {
     transform: scale(1.1);
 }
 
+.notification-bell {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(79, 70, 229, 0.18);
+    border-radius: 50%;
+    background: white;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.notification-bell:hover {
+    background: var(--light-gray);
+    transform: translateY(-1px);
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--danger);
+    color: white;
+    border: 2px solid white;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Cards */
 .card {
     background: white;

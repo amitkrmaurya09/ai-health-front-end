@@ -13,6 +13,7 @@ export function DashboardHeader({
   onAddEntry,
   onRefresh,
   onConnect,
+  onLogout,
 }) {
   return (
     <header className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl px-6 py-5">
@@ -63,8 +64,8 @@ export function DashboardHeader({
           />
         </div>
 
-        {/* ── Action Button ── */}
-        <div className="flex-shrink-0">
+        {/* ── Action Buttons ── */}
+        <div className="flex flex-wrap items-center gap-3">
           {activeSource === DATA_SOURCES.MANUAL ? (
             <button
               onClick={onAddEntry}
@@ -74,14 +75,24 @@ export function DashboardHeader({
               Add Entry
             </button>
           ) : (
-            <button
-              onClick={googleDataEmpty ? onConnect : onRefresh}
-              disabled={syncing}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-700/60 transition-all duration-150"
-            >
-              <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-              {googleDataEmpty ? "Connect" : syncing ? "Syncing…" : "Refresh"}
-            </button>
+            <>
+              <button
+                onClick={googleDataEmpty ? onConnect : onRefresh}
+                disabled={syncing}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-700/60 transition-all duration-150"
+              >
+                <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+                {googleDataEmpty ? "Connect" : syncing ? "Syncing…" : "Refresh"}
+              </button>
+              {!googleDataEmpty && (
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+                >
+                  Logout
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -93,9 +104,8 @@ function ToggleBtn({ active, onClick, icon, label, activeClass }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
-        active ? activeClass : "text-slate-400 hover:text-slate-200"
-      }`}
+      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${active ? activeClass : "text-slate-400 hover:text-slate-200"
+        }`}
     >
       {icon}
       {label}

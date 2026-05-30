@@ -1,34 +1,23 @@
 import PersonalInfoTab from './PersonalInfoTab';
 import MedicalHistoryTab from './MedicalHistoryTab';
-import SecurityTab from './SecurityTab';
-
 const TabContent = ({
   activeTab,
   formData,
-  passwordData,
+  doctorData,
   onChange,
-  onPasswordChange,
+  onDoctorChange,
   onSave,
-  onPasswordUpdate,
-  onDeleteAccount,
   isEditing,
+  isSaving,
+  predictionHistory,
 }) => {
-  const sharedProps = { formData, onChange, onSave, isEditing };
+  const sharedProps = { formData, doctorData, onChange, onDoctorChange, onSave, isEditing, isSaving };
 
   switch (activeTab) {
     case 'personal':
       return <PersonalInfoTab {...sharedProps} />;
     case 'medical':
-      return <MedicalHistoryTab {...sharedProps} />;
-    case 'security':
-      return (
-        <SecurityTab
-          passwordData={passwordData}
-          onPasswordChange={onPasswordChange}
-          onPasswordUpdate={onPasswordUpdate}
-          onDeleteAccount={onDeleteAccount}
-        />
-      );
+      return <MedicalHistoryTab {...sharedProps} predictionHistory={predictionHistory} />;
     default:
       return null;
   }

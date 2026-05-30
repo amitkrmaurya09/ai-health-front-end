@@ -1,10 +1,13 @@
+import { useLanguage } from '../../../hooks/useLanguage';
+
 const TABS = [
-  { id: 'personal', label: 'Personal Info' },
-  { id: 'medical', label: 'Medical History' },
-  { id: 'security', label: 'Security' },
+  { id: 'personal', labelKey: 'profile.info' },
+  { id: 'medical', labelKey: 'profile.history' },
 ];
 
 const TabNavigation = ({ activeTab, setActiveTab }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="flex flex-wrap gap-3 p-8 border-b border-slate-200 bg-gradient-to-r from-slate-50/50 to-white">
       {TABS.map((tab) => (
@@ -17,7 +20,7 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
               : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50'
           }`}
         >
-          {tab.label}
+          {t(tab.labelKey)}
         </button>
       ))}
     </div>

@@ -1,5 +1,5 @@
 import { Heart, Droplets, TrendingUp } from "lucide-react";
-import { formatBloodPressure } from "../../utils";
+import { formatBloodPressure, formatInteger, formatNumber } from "../../utils";
 
 // ─── InsightsPanel ────────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ const VITAL_ITEMS = [
     key: "heart_rate",
     unit: "bpm",
     icon: <Heart size={14} className="text-rose-400" />,
-    format: (v) => v ?? "—",
+    format: formatInteger,
   },
   {
     label: "Blood Pressure",
@@ -76,14 +76,14 @@ const VITAL_ITEMS = [
     key: "weight",
     unit: "kg",
     icon: <span className="text-xs text-cyan-400 font-bold">Wt</span>,
-    format: (v) => v ?? "—",
+    format: formatNumber,
   },
   {
     label: "Water",
     key: "water_intake_liters",
     unit: "L",
     icon: <Droplets size={14} className="text-blue-400" />,
-    format: (v) => v ?? "—",
+    format: formatNumber,
   },
 ];
 

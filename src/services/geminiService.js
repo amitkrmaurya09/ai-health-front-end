@@ -3,39 +3,74 @@ import { GoogleGenAI } from "@google/genai";
 // Initialize the Gemini API with your key from the environment variables.
 const ai = new GoogleGenAI({ apiKey: process.env.REACT_APP_GEMINI_API_KEY });
 
+const normalizePrediction = (data) => ({
+    summary: data.summary || "The symptoms were analyzed. Please monitor changes and consult a clinician if symptoms worsen.",
+    topPrediction: {
+        disease: data.topPrediction?.disease || data.disease || "Needs medical review",
+        confidence: Number(data.topPrediction?.confidence ?? data.confidence ?? 0),
+        urgency: data.topPrediction?.urgency || data.urgency || "Low",
+    },
+    predictions: Array.isArray(data.predictions) ? data.predictions : [],
+    recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+    redFlags: Array.isArray(data.redFlags) ? data.redFlags : [],
+    selfCare: Array.isArray(data.selfCare) ? data.selfCare : [],
+    followUpQuestions: Array.isArray(data.followUpQuestions) ? data.followUpQuestions : [],
+    extractedSymptoms: Array.isArray(data.extractedSymptoms) ? data.extractedSymptoms : [],
+});
+
 /**
- * Predicts potential illnesses based on a list of symptoms.
- * @param {Array<Object>} symptoms - An array of symptom objects, e.g., [{name: 'Headache'}, {name: 'Fever'}].
- * @returns {Promise<Object>} - A promise that resolves to the structured prediction data.
+ * Predicts potential illnesses from selected symptoms and/or a sentence description.
  */
-export const predictIllnessFromSymptoms = async (symptoms) => {
-    if (!symptoms || symptoms.length === 0) {
-        throw new Error("No symptoms provided for prediction.");
+export const predictIllnessFromSymptoms = async ({ selectedSymptoms = [], description = "" }) => {
+    const selectedNames = selectedSymptoms.map((symptom) => symptom.name || symptom).filter(Boolean);
+    const trimmedDescription = description.trim();
+
+    if (selectedNames.length === 0 && !trimmedDescription) {
+        throw new Error("Select symptoms or describe what you are feeling.");
     }
 
     // Define the AI's persona and persistent rules using systemInstruction
     const systemInstruction = `
-    You are an expert medical AI assistant. Your role is to analyze a list of symptoms provided by a user and predict a potential illness.
+    You are a careful medical AI assistant. Analyze selected symptoms and free-text symptom descriptions.
 
     Based on the symptoms, you must:
-    1.  Predict the most likely illness.
-    2.  Provide a confidence score (0-100) for your prediction.
-    3.  Generate a list of clear, actionable recommendations.
-    4.  Assess the urgency level as 'Low', 'Medium', or 'High'.
+    1. Extract symptoms from the sentence if present.
+    2. Predict likely conditions, without claiming certainty.
+    3. Provide a confidence score from 0-100.
+    4. Assess urgency as Low, Medium, or High.
+    5. Provide clear recommendations, self-care, red flags, and follow-up questions.
 
     CRITICAL: You must always respond ONLY with a raw JSON object. Do not include any text, explanations, or markdown formatting. The entire response must be a single, valid JSON object that matches this exact format:
     {
-      "disease": "...",
-      "confidence": 99,
+      "summary": "One short paragraph in patient-friendly language.",
+      "extractedSymptoms": ["..."],
+      "topPrediction": {
+        "disease": "...",
+        "confidence": 75,
+        "urgency": "Low"
+      },
+      "predictions": [
+        { "disease": "...", "confidence": 75, "reason": "..." }
+      ],
       "recommendations": ["...", "..."],
-      "urgency": "Low"
+      "selfCare": ["...", "..."],
+      "redFlags": ["...", "..."],
+      "followUpQuestions": ["...", "..."]
     }
+
+    Safety:
+    - Do not diagnose with certainty.
+    - Mention urgent care for chest pain, severe breathing trouble, fainting, stroke signs, severe dehydration, blue lips, or severe/worsening symptoms.
+    - If information is missing, ask useful follow-up questions.
     `;
 
     try {
         // Create the content from the user's selected symptoms
-        const symptomNames = symptoms.map(s => s.name).join(', ');
-        const contents = `The user is experiencing the following symptoms: ${symptomNames}. Please provide a prediction.`;
+        const contents = `
+        Selected symptoms: ${selectedNames.length > 0 ? selectedNames.join(', ') : 'None selected'}
+        User description: ${trimmedDescription || 'No sentence description provided'}
+        Please provide a structured symptom analysis.
+        `;
 
         // Generate content with the system instruction
         console.log("Generating illness prediction...");
@@ -66,9 +101,7 @@ export const predictIllnessFromSymptoms = async (symptoms) => {
             }
         }
 
-        const jsonData = JSON.parse(jsonString);
-        
-        return jsonData;
+        return normalizePrediction(JSON.parse(jsonString));
 
     } catch (error) {
         console.error("Error during symptom prediction:", error);

@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { ChatNotificationProvider } from './context/ChatNotificationContext';
 import Navigation from './components/common/Navigation';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './components/auth/Login';
@@ -15,15 +17,17 @@ import Profile from './components/profile/Profile';
 import Chatbot from './components/common/Chatbot';
 
 import './styles/styles.css';
-import DoctorProfile from './components/pages/DoctorProfile';
+import DoctorProfile from './pages/DoctorProfile';
 
 const App = () => {
     return (
-        <AuthProvider>
-            <BrowserRouter>
-                <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                    <Navigation />
-                    <Routes>
+        <LanguageProvider>
+            <AuthProvider>
+                <BrowserRouter>
+                  <ChatNotificationProvider>
+                    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                        <Navigation />
+                        <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/dashboard" element={
@@ -67,11 +71,13 @@ const App = () => {
                             </ProtectedRoute>
                         } />
                         <Route path="/" element={<Login />} />
-                    </Routes>
-                    <Chatbot />
-                </div>
-            </BrowserRouter>
-        </AuthProvider>
+                        </Routes>
+                        <Chatbot />
+                    </div>
+                  </ChatNotificationProvider>
+                </BrowserRouter>
+            </AuthProvider>
+        </LanguageProvider>
     );
 };
 
